@@ -1,4 +1,4 @@
-package com.lq.audio
+package com.lq.audio.record
 
 enum class AudioRecordType {
     NORMAL,

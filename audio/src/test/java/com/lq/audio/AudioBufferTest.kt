@@ -1,11 +1,12 @@
 package com.lq.audio
 
+import com.lq.audio.buffer.BlockingRingBuffer
 import org.junit.Test
 import java.util.concurrent.CountDownLatch
 import kotlin.concurrent.thread
 
 class AudioBufferTest {
-    private val audioBuffer = NewRingBuffer(190)
+    private val audioBuffer = BlockingRingBuffer(190)
 
     @Test
     fun `环形缓冲区测试`() {
@@ -39,5 +40,20 @@ class AudioBufferTest {
         }
         latch.await()
         println("测试结束")
+    }
+
+    val array = arrayOfNulls<Any>(10)
+    var write = 0
+    var read = 0
+    var count = 0
+
+    @Test
+    fun `极简版`(){
+
+
+        fun write(data: ByteArray): Boolean{
+            array[write] = data
+            return true
+        }
     }
 }

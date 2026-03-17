@@ -1,4 +1,4 @@
-package com.lq.audio
+package com.lq.audio.player
 
 sealed class PlayState {
 

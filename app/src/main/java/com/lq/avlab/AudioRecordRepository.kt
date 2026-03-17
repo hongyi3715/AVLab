@@ -1,8 +1,8 @@
 package com.lq.avlab
 
-import com.lq.audio.AudioRecordManager
-import com.lq.audio.AudioTrackManager
-import com.lq.audio.AacCoder
+import com.lq.audio.record.AudioRecordManager
+import com.lq.audio.player.AudioTrackManager
+import com.lq.audio.coder.MyCoder
 
 class AudioRecordRepository {
     private val audioRecordManager = AudioRecordManager
@@ -13,7 +13,7 @@ class AudioRecordRepository {
 
     val playState = audioTrackManager.stateFlow
 
-    private val coder = AacCoder()
+    private val coder = MyCoder()
 
 
      suspend fun initRecordFlow(){
@@ -27,21 +27,21 @@ class AudioRecordRepository {
                     j += 2
                 }
             }*/
-            audioTrackManager.setBytesData(pcm)
-//            coder.encode(pcm)
+            println("RecordSize:${pcm.size}")
+//            audioTrackManager.setBytesData(pcm)
+            coder.encode(pcm)
         }
     }
 
     suspend fun initCoder(){
-        coder.decodeFlow.collect {
+        coder.audioFlow.collect {
+            println("DecodeFlow Size :${it.size}")
             audioTrackManager.setBytesData(it)
         }
     }
 
-    suspend fun initEncoder(){
-        coder.encodeFlow.collect {
-            coder.decode(it, System.nanoTime()/1000)
-        }
+    suspend fun initDecoder(){
+        coder.initEncodeFlow()
     }
 
 

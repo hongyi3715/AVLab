@@ -1,6 +1,6 @@
-package com.lq.audio
+package com.lq.audio.record
 
-sealed class AudioConfig {
+abstract class AudioConfig {
     abstract val sampleRate: Int
     abstract val channel: Int
     abstract val encoding: Int

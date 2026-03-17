@@ -25,3 +25,4 @@ dependencyResolutionManagement {
 rootProject.name = "AVLab"
 include(":app")
 include(":audio")
+include(":video")

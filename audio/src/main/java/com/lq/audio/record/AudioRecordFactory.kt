@@ -1,6 +1,7 @@
-package com.lq.audio
+package com.lq.audio.record
 
 import android.media.MediaRecorder
+import com.lq.audio.record.AudioRecordType
 
 object AudioRecordFactory {
     private fun createAudioConfig(type: AudioRecordType): AudioRecordConfig =

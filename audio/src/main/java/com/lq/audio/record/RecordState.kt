@@ -1,4 +1,4 @@
-package com.lq.audio
+package com.lq.audio.record
 
 sealed class RecordState {
     data object Idle : RecordState()

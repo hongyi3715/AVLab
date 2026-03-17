@@ -3,7 +3,7 @@ package com.lq.avlab.ui.activity
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.lq.audio.RecordState
+import com.lq.audio.record.RecordState
 import com.lq.avlab.AudioRecordRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -21,7 +21,7 @@ class MainViewModel @Inject constructor(private val repository: AudioRecordRepos
     init {
         viewModelScope.launch(Dispatchers.IO) {
             launch {
-                repository.initEncoder()
+                repository.initDecoder()
             }
             launch {
                 repository.initCoder()

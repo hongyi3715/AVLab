@@ -1,10 +1,10 @@
-package com.lq.audio
+package com.lq.audio.player
 
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioManager
-import android.media.AudioRecord
 import android.media.AudioTrack
+import com.lq.audio.record.AudioConfig
 
 data class AudioTrackConfig(
     override val sampleRate: Int = 16000,

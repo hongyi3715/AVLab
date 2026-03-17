@@ -1,6 +1,7 @@
-package com.lq.audio
+package com.lq.audio.player
 
 import android.media.AudioTrack
+import com.lq.audio.player.PlayState
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

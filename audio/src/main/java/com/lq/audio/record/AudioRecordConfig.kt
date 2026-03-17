@@ -1,10 +1,11 @@
-package com.lq.audio
+package com.lq.audio.record
 
 import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import com.lq.audio.record.AudioConfig
 
 data class AudioRecordConfig(
     val audioSource: Int = MediaRecorder.AudioSource.VOICE_COMMUNICATION,

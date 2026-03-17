@@ -1,7 +1,8 @@
-package com.lq.audio
+package com.lq.audio.record
 
 import android.media.AudioRecord
-import android.util.Log
+import com.lq.audio.record.RecordState
+import com.lq.audio.buffer.BlockingRingBuffer
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -58,7 +59,7 @@ object AudioRecordManager {
 
     private var job: Job? = null
 
-    private val audioBuffer by lazy { NewRingBuffer(120) }
+    private val audioBuffer by lazy { BlockingRingBuffer(120) }
 
     private var recordJob: Job? = null
 
