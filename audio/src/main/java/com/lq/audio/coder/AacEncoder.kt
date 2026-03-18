@@ -12,10 +12,10 @@ class AacEncoder {
 
     private val sampleRate = 44100
     private val channelCount = 2
-    private val bitRate = 128000
+    private val bitRate = 256000
 
     private val samplesPerFrame = 1024
-    private val pcmFrameSize = samplesPerFrame * channelCount * 2
+    private val pcmFrameSize = samplesPerFrame * channelCount * 2 // 4096 bytes
 
     private val pcmBuffer = FrameAlignedRingBuffer(
         frameSize = pcmFrameSize,
@@ -29,6 +29,14 @@ class AacEncoder {
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
     val aacFlow = _aacFlow.asSharedFlow()
+
+    // ✅ 正确的时间戳
+    private var pts = 0L
+    private val frameDurationUs = 1024_000_000L / sampleRate
+
+    // 可选：给 decoder 用
+    var csdData: ByteArray? = null
+        private set
 
     init {
         val format = MediaFormat.createAudioFormat(
@@ -57,6 +65,9 @@ class AacEncoder {
         encoder.start()
     }
 
+    /**
+     * 输入任意大小 PCM（比如 AudioRecord 回调）
+     */
     fun encode(pcm: ByteArray) {
 
         pcmBuffer.write(pcm)
@@ -77,13 +88,16 @@ class AacEncoder {
         inputBuffer.clear()
         inputBuffer.put(frame)
 
+        // ✅ 使用连续 PTS（核心修复）
         encoder.queueInputBuffer(
             inputIndex,
             0,
             frame.size,
-            System.nanoTime() / 1000,
+            pts,
             0
         )
+
+        pts += frameDurationUs
 
         drain()
     }
@@ -92,25 +106,46 @@ class AacEncoder {
 
         val info = MediaCodec.BufferInfo()
 
-        var index = encoder.dequeueOutputBuffer(info, 0)
+        while (true) {
+            val index = encoder.dequeueOutputBuffer(info, 0)
 
-        while (index >= 0) {
+            when {
+                index >= 0 -> {
+                    val buffer = encoder.getOutputBuffer(index) ?: return
 
-            val buffer = encoder.getOutputBuffer(index)!!
+                    val data = ByteArray(info.size)
+                    buffer.position(info.offset)
+                    buffer.limit(info.offset + info.size)
+                    buffer.get(data)
 
-            val data = ByteArray(info.size)
+                    if (info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
+                        // ✅ 保存 CSD（AudioSpecificConfig）
+                        csdData = data
+                    } else if (info.size > 0) {
+                        // 👉 如果你要 ADTS，就在这里加
+                        _aacFlow.tryEmit(data)
+                    }
 
-            buffer.position(info.offset)
-            buffer.limit(info.offset + info.size)
+                    encoder.releaseOutputBuffer(index, false)
+                }
 
-            buffer.get(data)
+                index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                    val newFormat = encoder.outputFormat
+                    println("Encoder format changed: $newFormat")
+                }
 
-            _aacFlow.tryEmit(data)
-
-            encoder.releaseOutputBuffer(index, false)
-
-            index = encoder.dequeueOutputBuffer(info, 0)
+                index == MediaCodec.INFO_TRY_AGAIN_LATER -> {
+                    break
+                }
+            }
         }
     }
-}
 
+    fun release() {
+        try {
+            encoder.stop()
+        } catch (_: Exception) {
+        }
+        encoder.release()
+    }
+}

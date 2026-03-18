@@ -7,8 +7,8 @@ import android.media.AudioTrack
 import com.lq.audio.record.AudioConfig
 
 data class AudioTrackConfig(
-    override val sampleRate: Int = 16000,
-    override val channel: Int = AudioFormat.CHANNEL_OUT_MONO,
+    override val sampleRate: Int = 44100,
+    override val channel: Int = AudioFormat.CHANNEL_IN_STEREO,
     override val encoding: Int = AudioFormat.ENCODING_PCM_16BIT,
     override val bufferSizeFactor: Int = 2,
     val usage: Int = AudioAttributes.USAGE_MEDIA,

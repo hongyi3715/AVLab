@@ -9,8 +9,8 @@ import com.lq.audio.record.AudioConfig
 
 data class AudioRecordConfig(
     val audioSource: Int = MediaRecorder.AudioSource.VOICE_COMMUNICATION,
-    override val sampleRate: Int = 16000,
-    override val channel: Int = AudioFormat.CHANNEL_IN_MONO,
+    override val sampleRate: Int = 44100,
+    override val channel: Int = AudioFormat.CHANNEL_IN_STEREO,
     override val encoding: Int = AudioFormat.ENCODING_PCM_16BIT,
     override val bufferSizeFactor: Int = 2,
     override val sessionId: Int = AudioManager.AUDIO_SESSION_ID_GENERATE,

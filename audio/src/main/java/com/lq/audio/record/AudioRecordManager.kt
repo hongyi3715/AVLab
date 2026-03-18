@@ -59,7 +59,7 @@ object AudioRecordManager {
 
     private var job: Job? = null
 
-    private val audioBuffer by lazy { BlockingRingBuffer(120) }
+    private val audioBuffer by lazy { BlockingRingBuffer(1024) }
 
     private var recordJob: Job? = null
 
