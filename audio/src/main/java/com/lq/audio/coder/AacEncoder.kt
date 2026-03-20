@@ -3,6 +3,7 @@ package com.lq.audio.coder
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
+import com.lq.audio.AudioPacket
 import com.lq.audio.buffer.FrameAlignedRingBuffer
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -24,16 +25,16 @@ class AacEncoder {
 
     private val encoder: MediaCodec
 
-    private val _aacFlow = MutableSharedFlow<ByteArray>(
+    private val _aacFlow = MutableSharedFlow<AudioPacket>(
         extraBufferCapacity = 64,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
     val aacFlow = _aacFlow.asSharedFlow()
 
-    // ✅ 正确的时间戳
     private var pts = 0L
     private val frameDurationUs = 1024_000_000L / sampleRate
 
+    private var currentSequence = 0
     // 可选：给 decoder 用
     var csdData: ByteArray? = null
         private set
@@ -88,7 +89,6 @@ class AacEncoder {
         inputBuffer.clear()
         inputBuffer.put(frame)
 
-        // ✅ 使用连续 PTS（核心修复）
         encoder.queueInputBuffer(
             inputIndex,
             0,
@@ -97,9 +97,8 @@ class AacEncoder {
             0
         )
 
-        pts += frameDurationUs
-
         drain()
+        pts += frameDurationUs
     }
 
     private fun drain() {
@@ -119,11 +118,11 @@ class AacEncoder {
                     buffer.get(data)
 
                     if (info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
-                        // ✅ 保存 CSD（AudioSpecificConfig）
                         csdData = data
                     } else if (info.size > 0) {
-                        // 👉 如果你要 ADTS，就在这里加
-                        _aacFlow.tryEmit(data)
+                        currentSequence++
+                        val audioPacket = AudioPacket(payload = data, seq = currentSequence, timestamp = info.presentationTimeUs)
+                        _aacFlow.tryEmit(audioPacket)
                     }
 
                     encoder.releaseOutputBuffer(index, false)

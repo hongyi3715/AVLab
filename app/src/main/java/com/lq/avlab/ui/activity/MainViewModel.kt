@@ -8,6 +8,8 @@ import com.lq.avlab.AudioRecordRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.net.Inet4Address
+import java.net.NetworkInterface
 import javax.inject.Inject
 
 @HiltViewModel
@@ -16,34 +18,88 @@ class MainViewModel @Inject constructor(private val repository: AudioRecordRepos
 
     private var isRecording: Boolean = false
 
-     var recordState: RecordState = RecordState.Idle
+    var recordState: RecordState = RecordState.Idle
+
+    private val isClient = false
 
     init {
+        printAllIPs()
+        initAll()
+    }
+
+    private fun initData() {
         viewModelScope.launch(Dispatchers.IO) {
-            launch {
-                repository.initDecoder()
-            }
-            launch {
-                repository.initCoder()
-            }
-            launch {
-                repository.initRecordFlow()
-            }
-            launch {
-                repository.recordState.collect {
-                    Log.d("RecordState","State: $it")
-                    recordState = it
-                    isRecording = it == RecordState.Recording
+            if (isClient) {
+                launch {
+                    repository.initEncoder()
                 }
-            }
-            launch {
-                repository.playState.collect {
+                launch {
+                    repository.initRecordFlow()
+                }
+                launch {
+                    repository.recordState.collect {
+                        Log.d("录音状态", "State: $it")
+                        recordState = it
+                        isRecording = it == RecordState.Recording
+                    }
+                }
+            } else {
+                launch {
+                    repository.initReceiver(viewModelScope)
+                }
+
+                launch { //持续接收
+                    repository.initJitterBuffer()
+                }
+
+                launch {//解码
+                    repository.handleDecodeAudio()
+                }
+
+                launch {
+                    repository.playState.collect {
+                        println("播放状态:$it")
+                    }
                 }
             }
         }
     }
 
+    private fun initAll() = viewModelScope.launch(Dispatchers.IO){
+        launch {
+            repository.initReceiver(viewModelScope)
+        }
+
+        launch { //持续接收
+            repository.initJitterBuffer()
+        }
+
+        launch {//解码
+            repository.handleDecodeAudio()
+        }
+
+        launch {
+            repository.playState.collect {
+                println("播放状态:$it")
+            }
+        }
+        launch {
+            repository.initEncoder()
+        }
+        launch {
+            repository.initRecordFlow()
+        }
+        launch {
+            repository.recordState.collect {
+                Log.d("录音状态", "State: $it")
+                recordState = it
+                isRecording = it == RecordState.Recording
+            }
+        }
+    }
+
     fun toggleRecord() {
+
         if (isRecording) {
             stopRecord()
         } else {
@@ -56,7 +112,7 @@ class MainViewModel @Inject constructor(private val repository: AudioRecordRepos
             repository.trackPlay()
         }
         launch {
-            repository.recordToFile()
+            repository.startToRecord()
         }
     }
 
@@ -75,4 +131,25 @@ class MainViewModel @Inject constructor(private val repository: AudioRecordRepos
         stopRecord()
     }
 
+
+    fun printAllIPs() {
+        try {
+            val interfaces = NetworkInterface.getNetworkInterfaces()
+            while (interfaces.hasMoreElements()) {
+                val networkInterface = interfaces.nextElement()
+                val addresses = networkInterface.inetAddresses
+
+                println("接口: ${networkInterface.name} (${if (networkInterface.isUp) "UP" else "DOWN"})")
+
+                while (addresses.hasMoreElements()) {
+                    val addr = addresses.nextElement()
+                    if (addr is Inet4Address) {
+                        println("  IPv4: ${addr.hostAddress}")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 }

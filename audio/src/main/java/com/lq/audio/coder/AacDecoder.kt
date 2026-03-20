@@ -72,9 +72,7 @@ class AacDecoder {
 
         while (true) {
 
-            val index = decoder.dequeueOutputBuffer(info, 10000)
-
-            when (index) {
+            when (val index = decoder.dequeueOutputBuffer(info, 10000)) {
 
                 MediaCodec.INFO_TRY_AGAIN_LATER -> {
                     // ✔ 没数据是正常的
