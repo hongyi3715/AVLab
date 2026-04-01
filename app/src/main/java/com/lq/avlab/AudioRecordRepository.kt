@@ -55,9 +55,9 @@ class AudioRecordRepository {
 
         scope.launch(Dispatchers.IO) {
 
-            val baseDelay = 30L // 基础延迟 30ms
-            val jitter = 20L    // 抖动 ±20ms
-            val lossRate = 0.05f // 5% 丢包
+            val baseDelay = 20L // 基础延迟 20ms
+            val jitter = 10L    // 抖动 ±10ms
+            val lossRate = 0.01f // 1% 丢包
 
             for (packet in simulateQueue) {
 
@@ -65,9 +65,9 @@ class AudioRecordRepository {
                 if (Random.nextFloat() < lossRate) continue
 
                 // 抖动（围绕 baseDelay）
-                val delayMs = baseDelay + Random.nextLong(-jitter, jitter)
+//                val delayMs = baseDelay + Random.nextLong(-jitter, jitter)
 
-                delay(delayMs.coerceAtLeast(0))
+//                delay(delayMs.coerceAtLeast(0))
 
                 jitterBuffer.add(packet)
             }
@@ -87,8 +87,9 @@ class AudioRecordRepository {
             val packet = jitterBuffer.poll()
             if (packet != null) {
                  coder.decode(packet.payload)
-            } else { // 丢包 → 静音
-
+            } else {// 计算方式是 采样率 * 字节 = 一秒的字节数，当前间隔*字节数=当前间隔的字节数
+                println("等待空音频，填充静音帧")
+                audioTrackManager.setBytesData(ByteArray(4096))
             }
             val cost = (System.nanoTime() - start) / 1_000_000
             val sleep = frameDuration - cost
