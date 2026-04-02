@@ -1,16 +1,20 @@
 package com.lq.avlab
 
+import android.os.SystemClock
 import com.lq.audio.AudioPacket
 import com.lq.audio.net.UdpSocket
 import com.lq.audio.buffer.JitterBuffer
 import com.lq.audio.record.AudioRecordManager
 import com.lq.audio.player.AudioTrackManager
 import com.lq.audio.coder.AacCoder
+import com.lq.audio.data.AudioFrame
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
 class AudioRecordRepository {
@@ -62,31 +66,31 @@ class AudioRecordRepository {
             for (packet in simulateQueue) {
 
                 // 丢包
-                if (Random.nextFloat() < lossRate) continue
+//                if (Random.nextFloat() < lossRate) continue
 
                 // 抖动（围绕 baseDelay）
-//                val delayMs = baseDelay + Random.nextLong(-jitter, jitter)
+                val delayMs = baseDelay + Random.nextLong(-jitter, jitter)
 
 //                delay(delayMs.coerceAtLeast(0))
 
-                jitterBuffer.add(packet)
+                jitterBuffer.add(packet.also { it.trace?.bufferInTime = SystemClock.elapsedRealtime() })
             }
         }
     }
 
     //持续拿抖动缓存区，进行解码，如何缓存重排序？静音丢弃？
     suspend fun initJitterBuffer(){
-        val frameDuration = 21L
+        val frameDuration = 5L
 
-        while (jitterBuffer.size<5){
+        while (jitterBuffer.size<3){
             delay(10)
         }
 
         while (true) {
             val start = System.nanoTime()
-            val packet = jitterBuffer.poll()
+            val packet = jitterBuffer.pollFirst()
             if (packet != null) {
-                 coder.decode(packet.payload)
+                 coder.decode(AudioFrame(packet.payload,packet.trace))
             } else {// 计算方式是 采样率 * 字节 = 一秒的字节数，当前间隔*字节数=当前间隔的字节数
                 println("等待空音频，填充静音帧")
                 audioTrackManager.setBytesData(ByteArray(4096))
@@ -103,8 +107,9 @@ class AudioRecordRepository {
     //解码成功，直接播放
     suspend fun handleDecodeAudio(){
         coder.audioFlow.collect {
-            println("DecodeFlow Size :${it.size}")
-            audioTrackManager.setBytesData(it)
+            it.trace?.playTime = SystemClock.elapsedRealtime()
+            println("AudioPlayTrace:${it.trace}")
+            audioTrackManager.setBytesData(it.data)
         }
     }
 

@@ -1,6 +1,6 @@
 package com.lq.audio.coder
 
-import com.lq.audio.buffer.JitterBuffer
+import com.lq.audio.data.AudioFrame
 
 class AacCoder {
 
@@ -13,9 +13,9 @@ class AacCoder {
 
     val encodeAudioFlow = encoder.aacFlow
 
-    fun  encode(pcm: ByteArray) = encoder.encode(pcm)
+    fun  encode(pcm: AudioFrame) = encoder.encode(pcm)
 
-    fun decode(frame: ByteArray) = decoder.decode(frame)
+    fun decode(frame: AudioFrame) = decoder.decode(frame)
 
 
 }

@@ -1,6 +1,8 @@
 package com.lq.audio.net
 
+import android.os.SystemClock
 import com.lq.audio.AudioPacket
+import com.lq.audio.data.AudioTrace
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -32,7 +34,13 @@ object UdpSocket {
         val packet = DatagramPacket(
             buffer.array(), buffer.position(), InetAddress.getByName(host), port
         )
-        sendSocket.send(packet)
+        audioPacket.trace?.sendTime = SystemClock.elapsedRealtime()
+        println("AudioSendTrace:${audioPacket.trace}")
+        try {
+            sendSocket.send(packet)
+        }catch (e: Exception){
+            e.printStackTrace()
+        }
     }
 
 
@@ -46,7 +54,7 @@ object UdpSocket {
                 val timestamp = byteBuffer.long
                 val aacData = ByteArray(packet.length - 12)
                 byteBuffer.get(aacData)
-                val audioPacket = AudioPacket(seq, timestamp, aacData)
+                val audioPacket = AudioPacket(seq, timestamp, aacData, trace = AudioTrace(seq, receiveTime = SystemClock.elapsedRealtime()))
                 onPacketListener?.onPacket(audioPacket)
             }
         }.start()

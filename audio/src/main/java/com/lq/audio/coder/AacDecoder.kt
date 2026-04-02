@@ -2,6 +2,9 @@ package com.lq.audio.coder
 
 import android.media.MediaCodec
 import android.media.MediaFormat
+import android.os.SystemClock
+import com.lq.audio.data.AudioFrame
+import com.lq.audio.data.AudioTrace
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -14,7 +17,7 @@ class AacDecoder {
 
     private val decoder: MediaCodec
 
-    private val _audioFlow = MutableSharedFlow<ByteArray>(
+    private val _audioFlow = MutableSharedFlow<AudioFrame>(
         extraBufferCapacity = 64,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
@@ -42,14 +45,15 @@ class AacDecoder {
         decoder.start()
     }
 
-    fun decode(frame: ByteArray) {
+    fun decode(frame: AudioFrame) {
+        frame.trace?.decodeStartTime = SystemClock.elapsedRealtime()
 
         val inputIndex = decoder.dequeueInputBuffer(10000)
         if (inputIndex >= 0) {
 
             val inputBuffer = decoder.getInputBuffer(inputIndex)!!
             inputBuffer.clear()
-            inputBuffer.put(frame)
+            inputBuffer.put(frame.data)
 
             // ✔ 使用递增时间戳（关键）
             pts += frameDurationUs
@@ -57,16 +61,16 @@ class AacDecoder {
             decoder.queueInputBuffer(
                 inputIndex,
                 0,
-                frame.size,
+                frame.data.size,
                 pts,
                 0
             )
         }
 
-        drain()
+        drain(frame.trace)
     }
 
-    private fun drain() {
+    private fun drain(trace: AudioTrace?) {
 
         val info = MediaCodec.BufferInfo()
 
@@ -102,7 +106,7 @@ class AacDecoder {
 
                         println("✅ PCM output size: ${pcm.size}")
 
-                        _audioFlow.tryEmit(pcm)
+                        _audioFlow.tryEmit(AudioFrame(pcm,trace))
 
                         decoder.releaseOutputBuffer(index, false)
                     }

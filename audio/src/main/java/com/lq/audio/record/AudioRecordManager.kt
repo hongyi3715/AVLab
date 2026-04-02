@@ -1,8 +1,10 @@
 package com.lq.audio.record
 
 import android.media.AudioRecord
-import com.lq.audio.record.RecordState
+import android.os.SystemClock
 import com.lq.audio.buffer.BlockingRingBuffer
+import com.lq.audio.data.AudioTrace
+import com.lq.audio.data.AudioFrame
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -35,7 +37,7 @@ object AudioRecordManager {
      * SUSPEND 数据完整但可能高延迟,适用于离线处理
      * DROP_OLDEST 丢弃旧数据,适用于实时处理
      */
-    private val _audioFlow = MutableSharedFlow<ByteArray>(
+    private val _audioFlow = MutableSharedFlow<AudioFrame>(
             extraBufferCapacity = 16,
             onBufferOverflow = BufferOverflow.DROP_OLDEST
         )
@@ -76,7 +78,12 @@ object AudioRecordManager {
                 while (isActive) {
                    if(_recordStateFlow.value is RecordState.Recording){
                        val audioSize = audioBuffer.read(readBuffer)
-                       if (audioSize > 0) _audioFlow.tryEmit(readBuffer.copyOf(audioSize))
+                       if (audioSize > 0) _audioFlow.tryEmit(
+                           AudioFrame(
+                               readBuffer.copyOf(audioSize),
+                               AudioTrace(recordTime = SystemClock.elapsedRealtime())
+                           )
+                       )
                    }else{
                        delay(60)
                    }

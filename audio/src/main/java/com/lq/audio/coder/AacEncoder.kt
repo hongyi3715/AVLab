@@ -3,8 +3,11 @@ package com.lq.audio.coder
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
+import android.os.SystemClock
 import com.lq.audio.AudioPacket
 import com.lq.audio.buffer.FrameAlignedRingBuffer
+import com.lq.audio.data.AudioTrace
+import com.lq.audio.data.AudioFrame
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -35,6 +38,7 @@ class AacEncoder {
     private val frameDurationUs = 1024_000_000L / sampleRate
 
     private var currentSequence = 0
+
     // 可选：给 decoder 用
     var csdData: ByteArray? = null
         private set
@@ -69,39 +73,40 @@ class AacEncoder {
     /**
      * 输入任意大小 PCM（比如 AudioRecord 回调）
      */
-    fun encode(pcm: ByteArray) {
+    fun encode(pcm: AudioFrame) {
 
-        pcmBuffer.write(pcm)
+        pcmBuffer.write(pcm.data)
 
         val frame = ByteArray(pcmFrameSize)
 
         while (pcmBuffer.readFrame(frame)) {
-            encodeFrame(frame)
+            val trace = pcm.trace?.copy()
+            encodeFrame(AudioFrame(frame,trace ))
         }
     }
 
-    private fun encodeFrame(frame: ByteArray) {
+    private fun encodeFrame(frame: AudioFrame) {
 
         val inputIndex = encoder.dequeueInputBuffer(10000)
         if (inputIndex < 0) return
 
         val inputBuffer = encoder.getInputBuffer(inputIndex)!!
         inputBuffer.clear()
-        inputBuffer.put(frame)
+        inputBuffer.put(frame.data)
 
         encoder.queueInputBuffer(
             inputIndex,
             0,
-            frame.size,
+            frame.data.size,
             pts,
             0
         )
 
-        drain()
+        drain(frame.trace)
         pts += frameDurationUs
     }
 
-    private fun drain() {
+    private fun drain(audioTrace: AudioTrace?) {
 
         val info = MediaCodec.BufferInfo()
 
@@ -121,7 +126,15 @@ class AacEncoder {
                         csdData = data
                     } else if (info.size > 0) {
                         currentSequence++
-                        val audioPacket = AudioPacket(payload = data, seq = currentSequence, timestamp = info.presentationTimeUs)
+                        val audioPacket = AudioPacket(
+                            payload = data,
+                            seq = currentSequence,
+                            timestamp = info.presentationTimeUs,
+                            trace = audioTrace.also {
+                                it?.seq = currentSequence
+                                it?.encodeDoneTime =
+                                    SystemClock.elapsedRealtime()
+                            })
                         _aacFlow.tryEmit(audioPacket)
                     }
 

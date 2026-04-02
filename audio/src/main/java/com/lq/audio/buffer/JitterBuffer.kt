@@ -1,5 +1,6 @@
 package com.lq.audio.buffer
 
+import android.os.SystemClock
 import android.util.Log
 import com.lq.audio.AudioPacket
 import com.lq.audio.data.JitterBufferStats
@@ -12,15 +13,17 @@ class JitterBuffer {
 
     private val buffer = TreeMap<Int, AudioPacket>()
 
-    private var expectedSeq = 0
+    private var expectedSeq = 1
 
     private val maxBufferSize = 200 //最大缓冲数量
 
     private val maxExpiredTime = 3000 //罪大超时时间
 
-    private val maxMissPacketSize = 3 //超过三帧后放弃
+    private var missingStartTime = 0L
 
-    private var currentMissCount = 0
+    private val frameDurationMs = 1024L * 1000 / 44100 // 23ms
+
+    private val missTimeoutMs =  33  // 约33ms
 
     private val status = JitterBufferStats()
 
@@ -37,40 +40,84 @@ class JitterBuffer {
             }
         }
 
-        packet.receiveTime = System.currentTimeMillis()
         buffer[packet.seq] = packet
     }
 
     @Synchronized
     fun poll(): AudioPacket? {
-        if(buffer.isEmpty()) return null
+        buffer.remove(expectedSeq)?.let {
+            expectedSeq++
+            missingStartTime = 0L
+            return it
+        }
+
+        if (missingStartTime == 0L) {
+            missingStartTime = System.currentTimeMillis()
+            return null
+        }
+
+        if (System.currentTimeMillis() - missingStartTime >= missTimeoutMs) {
+            println("等待时长超过,跳过当前帧")
+            expectedSeq++
+            missingStartTime = 0L
+        }
+        return null //跳过，播放静音帧
+    }
+
+    /*
+    * 1 2 3 4 5
+    *
+    * 1 3  2  5    4
+    *
+    * 1
+    * */
+    @Synchronized
+    fun pollFirst(): AudioPacket? {
         buffer.remove(expectedSeq)?.let {
             expectedSeq++
             return it
         }
-        val nextSeq = buffer.firstKey()
-        val gap = nextSeq - expectedSeq
-        //连续丢失多个packet 直接跳过
-        if (currentMissCount >= maxMissPacketSize) {
-            Log.w("JitterBuffer", "连续丢包超过$maxMissPacketSize，跳过 $gap 个包")
+        if (buffer.isEmpty()) {
+            missingStartTime = 0L
+            return null
+        }
+        val nextSeq = buffer.ceilingKey(expectedSeq) ?: return null
+
+        // 落后太多，直接追上
+        if (nextSeq - expectedSeq > 3) {
             expectedSeq = nextSeq
-            currentMissCount = 0
+            missingStartTime = 0L
 
             return buffer.remove(expectedSeq)?.also {
                 expectedSeq++
             }
         }
-        currentMissCount++
-        return null //跳过，播放静音帧
+
+        // 只落后一点，给它一点时间等迟到包
+        if (missingStartTime == 0L) {
+            missingStartTime = SystemClock.elapsedRealtime()
+            return null
+        }
+
+        if (SystemClock.elapsedRealtime() - missingStartTime >= missTimeoutMs) {
+            // 超时，认为 expected 丢了
+            expectedSeq++
+            missingStartTime = 0L
+        }
+        return null
     }
 
     private fun clearExpiredPackets() {
-        val now = System.currentTimeMillis()
-        val expired = buffer.filter {
-            now - it.value.receiveTime >= maxExpiredTime && it.key < expectedSeq
-        }
-        expired.forEach { (i, _) ->
-            buffer.remove(i)
+        try {
+            val now = System.currentTimeMillis()
+            val expired = buffer.filter {
+                now - it.value.trace!!.receiveTime >= maxExpiredTime && it.key < expectedSeq
+            }
+            expired.forEach { (i, _) ->
+                buffer.remove(i)
+            }
+        }catch (e: Exception){
+            e.printStackTrace()
         }
     }
 
