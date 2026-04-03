@@ -8,9 +8,9 @@ import com.lq.audio.record.AudioConfig
 
 data class AudioTrackConfig(
     override val sampleRate: Int = 44100,
-    override val channel: Int = AudioFormat.CHANNEL_IN_STEREO,
+    override val channel: Int = AudioFormat.CHANNEL_OUT_STEREO,
     override val encoding: Int = AudioFormat.ENCODING_PCM_16BIT,
-    override val bufferSizeFactor: Int = 2,
+    override val bufferSizeFactor: Int = 1,
     val usage: Int = AudioAttributes.USAGE_MEDIA,
     val contentType: Int = AudioAttributes.CONTENT_TYPE_MUSIC,
     val transferMode: Int = AudioTrack.MODE_STREAM,

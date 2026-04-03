@@ -6,8 +6,10 @@ import android.os.SystemClock
 import com.lq.audio.data.AudioFrame
 import com.lq.audio.data.AudioTrace
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.consumeAsFlow
 import java.nio.ByteBuffer
 
 class AacDecoder {
@@ -17,15 +19,12 @@ class AacDecoder {
 
     private val decoder: MediaCodec
 
-    private val _audioFlow = MutableSharedFlow<AudioFrame>(
-        extraBufferCapacity = 64,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
-    )
-    val audioFlow = _audioFlow.asSharedFlow()
+    private val _audioFlow = Channel<AudioFrame>(capacity = 3)
+    val audioFlow = _audioFlow.consumeAsFlow()
 
     // ✔ 用稳定递增 pts（关键）
     private var pts = 0L
-    private val frameDurationUs = 1024_000_000L / sampleRate // 1024 samples
+    private val frameDurationUs = 1024L * 1_000_000L / sampleRate // 1024 samples
 
     init {
         val format = MediaFormat.createAudioFormat(
@@ -45,18 +44,15 @@ class AacDecoder {
         decoder.start()
     }
 
-    fun decode(frame: AudioFrame) {
+    // 挂起函数，保证顺序发送
+    suspend fun decode(frame: AudioFrame) {
         frame.trace?.decodeStartTime = SystemClock.elapsedRealtime()
 
-        val inputIndex = decoder.dequeueInputBuffer(10000)
+        val inputIndex = decoder.dequeueInputBuffer(10_000)
         if (inputIndex >= 0) {
-
             val inputBuffer = decoder.getInputBuffer(inputIndex)!!
             inputBuffer.clear()
             inputBuffer.put(frame.data)
-
-            // ✔ 使用递增时间戳（关键）
-            pts += frameDurationUs
 
             decoder.queueInputBuffer(
                 inputIndex,
@@ -65,51 +61,33 @@ class AacDecoder {
                 pts,
                 0
             )
+            pts += frameDurationUs
         }
 
-        drain(frame.trace)
+        drain(trace = frame.trace)
     }
 
-    private fun drain(trace: AudioTrace?) {
-
+    // 串行读取 MediaCodec 输出
+    private suspend fun drain(trace: AudioTrace?) {
         val info = MediaCodec.BufferInfo()
-
         while (true) {
-
-            when (val index = decoder.dequeueOutputBuffer(info, 10000)) {
-
-                MediaCodec.INFO_TRY_AGAIN_LATER -> {
-                    // ✔ 没数据是正常的
-                    return
+            val index = decoder.dequeueOutputBuffer(info, 0)
+            when {
+                index == MediaCodec.INFO_TRY_AGAIN_LATER -> return
+                index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                    println("Decoder format changed: ${decoder.outputFormat}")
                 }
+                index >= 0 -> {
+                    val buffer = decoder.getOutputBuffer(index)!!
+                    val pcm = ByteArray(info.size)
+                    buffer.position(info.offset)
+                    buffer.limit(info.offset + info.size)
+                    buffer.get(pcm)
 
-                MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                    val newFormat = decoder.outputFormat
-                    println("Decoder format changed: $newFormat")
-                }
+                    // 挂起发送，避免丢帧
+                    _audioFlow.send(AudioFrame(pcm, trace))
 
-                MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED -> {
-                    // 老设备才会走这里，一般不用管
-                }
-
-                else -> {
-                    if (index >= 0) {
-
-                        val buffer = decoder.getOutputBuffer(index)!!
-
-                        val pcm = ByteArray(info.size)
-
-                        buffer.position(info.offset)
-                        buffer.limit(info.offset + info.size)
-
-                        buffer.get(pcm)
-
-                        println("✅ PCM output size: ${pcm.size}")
-
-                        _audioFlow.tryEmit(AudioFrame(pcm,trace))
-
-                        decoder.releaseOutputBuffer(index, false)
-                    }
+                    decoder.releaseOutputBuffer(index, false)
                 }
             }
         }
