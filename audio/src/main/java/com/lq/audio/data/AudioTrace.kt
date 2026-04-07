@@ -8,5 +8,6 @@ data class AudioTrace(
     var receiveTime: Long = 0L,     // UDP receive
     var bufferInTime: Long = 0L,    // 放入 jitter buffer
     var decodeStartTime: Long = 0L, // 喂给 MediaCodec decode
-    var playTime: Long = 0L         // AudioTrack.write
+    var decodeOutputTime:Long = 0L,  // 解码完成时间
+    var playTime: Long = 0L,         // AudioTrack.write
 )

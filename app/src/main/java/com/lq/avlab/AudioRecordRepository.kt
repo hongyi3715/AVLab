@@ -8,6 +8,7 @@ import com.lq.audio.record.AudioRecordManager
 import com.lq.audio.player.AudioTrackManager
 import com.lq.audio.coder.AacCoder
 import com.lq.audio.data.AudioFrame
+import com.lq.audio.data.PollResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -66,12 +67,12 @@ class AudioRecordRepository {
             for (packet in simulateQueue) {
 
                 // 丢包
-//                if (Random.nextFloat() < lossRate) continue
+                if (Random.nextFloat() < lossRate) continue
 
                 // 抖动（围绕 baseDelay）
                 val delayMs = baseDelay + Random.nextLong(-jitter, jitter)
 
-//                delay(delayMs.coerceAtLeast(0))
+                delay(delayMs.coerceAtLeast(0))
 
                 jitterBuffer.add(packet.also { it.trace?.bufferInTime = SystemClock.elapsedRealtime() })
             }
@@ -80,26 +81,28 @@ class AudioRecordRepository {
 
     //持续拿抖动缓存区，进行解码，如何缓存重排序？静音丢弃？
     suspend fun initJitterBuffer(){
-        val frameDuration = 5L
-
-        while (jitterBuffer.size<3){
+        val frameDuration = 10L
+        while (jitterBuffer.size<5){
             delay(10)
         }
 
         while (true) {
-            val start = System.nanoTime()
-            val packet = jitterBuffer.pollFirst()
-            if (packet != null) {
-                 coder.decode(AudioFrame(packet.payload,packet.trace))
-            } else {// 计算方式是 采样率 * 字节 = 一秒的字节数，当前间隔*字节数=当前间隔的字节数
-                println("等待空音频，填充静音帧")
-                audioTrackManager.setBytesData(ByteArray(4096))
-            }
-            val cost = (System.nanoTime() - start) / 1_000_000
-            val sleep = frameDuration - cost
+            when (val result = jitterBuffer.pollFirst()) {
 
-            if (sleep > 0) {
-                delay(sleep)
+                is PollResult.Packet -> {
+                    coder.decode(AudioFrame(result.packet.payload,result.packet.trace))
+                    delay(frameDuration)
+                }
+
+                PollResult.Wait -> { // 给迟到包 2~3ms 机会，不补静音
+                    delay(3)
+                }
+
+                PollResult.Lost -> {
+                    println("等待空音频，填充静音帧")
+                    audioTrackManager.setBytesData(ByteArray(4096))
+                    delay(frameDuration)
+                }
             }
         }
     }

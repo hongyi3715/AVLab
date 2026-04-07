@@ -1,9 +1,11 @@
 package com.lq.audio.buffer
 
 import android.os.SystemClock
-import android.util.Log
 import com.lq.audio.AudioPacket
 import com.lq.audio.data.JitterBufferStats
+import com.lq.audio.data.PollResult
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.TreeMap
 
 /*
@@ -23,9 +25,9 @@ class JitterBuffer {
 
     private val frameDurationMs = 1024L * 1000 / 44100 // 23ms
 
-    private val missTimeoutMs =  33  // 约33ms
+    private val missTimeoutMs =  40  // 约33ms
 
-    private val status = JitterBufferStats()
+    private val maxJump = 4
 
     @Synchronized
     fun add(packet: AudioPacket) {
@@ -72,39 +74,52 @@ class JitterBuffer {
     * 1
     * */
     @Synchronized
-    fun pollFirst(): AudioPacket? {
+    fun pollFirst(): PollResult {
+
+        // 正常拿到 expected
         buffer.remove(expectedSeq)?.let {
             expectedSeq++
-            return it
+            missingStartTime = 0L
+            return PollResult.Packet(it)
         }
+
+        // 当前完全没包
         if (buffer.isEmpty()) {
             missingStartTime = 0L
-            return null
+            return PollResult.Wait
         }
-        val nextSeq = buffer.ceilingKey(expectedSeq) ?: return null
 
-        // 落后太多，直接追上
-        if (nextSeq - expectedSeq > 3) {
+        val nextSeq = buffer.ceilingKey(expectedSeq)
+            ?: return PollResult.Wait
+
+        // 差距太大，认为 expected 已经丢了，直接追到 nextSeq
+        if (nextSeq - expectedSeq > maxJump) {
             expectedSeq = nextSeq
             missingStartTime = 0L
 
-            return buffer.remove(expectedSeq)?.also {
-                expectedSeq++
-            }
+            return buffer.remove(expectedSeq)
+                ?.also { expectedSeq++ }
+                ?.let { PollResult.Packet(it) }
+                ?: PollResult.Wait
         }
 
-        // 只落后一点，给它一点时间等迟到包
+        val now = SystemClock.elapsedRealtime()
+
+        // 第一次发现 expected 没到，开始计时
         if (missingStartTime == 0L) {
-            missingStartTime = SystemClock.elapsedRealtime()
-            return null
+            missingStartTime = now
+            return PollResult.Wait
         }
 
-        if (SystemClock.elapsedRealtime() - missingStartTime >= missTimeoutMs) {
-            // 超时，认为 expected 丢了
-            expectedSeq++
-            missingStartTime = 0L
+        // 还没等够，不补静音
+        if (now - missingStartTime < missTimeoutMs) {
+            return PollResult.Wait
         }
-        return null
+
+        // 超时，认为 expected 丢了
+        expectedSeq++
+        missingStartTime = 0L
+        return PollResult.Lost
     }
 
     private fun clearExpiredPackets() {
