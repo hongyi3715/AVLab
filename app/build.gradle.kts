@@ -4,14 +4,11 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
-//    alias(libs.plugins.hrouter.plugin)
 }
 
 android {
     namespace = "com.lq.avlab"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.lq.avlab"
@@ -45,9 +42,8 @@ android {
 }
 
 dependencies {
-//    implementation(libs.hrouter.core)
-//    ksp(libs.hrouter.compiler)
     implementation(project(":audio"))
+    implementation(project(":video"))
 
     implementation(libs.hilt)
     implementation(libs.hilt.navigation.compose)
@@ -61,6 +57,10 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+
+    // CameraX for Compose (AndroidView)
+    implementation(libs.androidx.camera.view)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

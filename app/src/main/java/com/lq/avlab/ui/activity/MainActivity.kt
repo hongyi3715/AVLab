@@ -19,7 +19,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             AVLabTheme {
                 Scaffold(modifier = Modifier.Companion.fillMaxSize()) { innerPadding ->
-                    Greeting()
+                    VideoScreen()
                 }
             }
         }

@@ -28,6 +28,6 @@ fun Greeting(viewModel: MainViewModel = hiltViewModel()) {
 @Composable
 fun GreetingPreview() {
     AVLabTheme {
-        Greeting()
+        VideoScreen()
     }
 }
