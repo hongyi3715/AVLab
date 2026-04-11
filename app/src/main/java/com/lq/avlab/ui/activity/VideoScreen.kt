@@ -26,7 +26,7 @@ fun VideoScreen() {
         // 2. 显示预览
         CameraPreview(
             controller = controller,
-            modifier = Modifier.fillMaxWidth().fillMaxHeight()
+            modifier = Modifier.fillMaxWidth().height(600.dp)
         )
 
         // 3. 录制按钮
