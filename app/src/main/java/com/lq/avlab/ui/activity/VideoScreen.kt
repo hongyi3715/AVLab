@@ -36,7 +36,7 @@ fun VideoScreen() {
                     controller.stopRecording()
                     isRecording = false
                 } else {
-                    val file = File(context.externalCacheDir, "${System.currentTimeMillis()}.mp4")
+                    val file = File(context.externalCacheDir, "${System.currentTimeMillis()}.h264")
                     controller.startRecording(file) { event ->
                         // 处理录制事件（如结束、错误等）
                     }

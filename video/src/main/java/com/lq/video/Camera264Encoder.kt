@@ -8,33 +8,105 @@ import android.view.Surface
 class Camera264Encoder {
 
 
-     var encodeSurface : Surface?=null
-         private set
+    var encodeSurface: Surface? = null
+        private set
 
+    private var codec: MediaCodec? = null
+    private var outputThread: Thread? = null
 
-    private fun createEncoder(width:Int,height:Int,bitrate: Int){
-        val codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
-        val format = MediaFormat.createVideoFormat(
+    var format: MediaFormat? = null
+        private set
+
+    @Volatile
+    private var isRunning = false
+
+    fun createEncoder(width: Int, height: Int, bitrate: Int) {
+        codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
+        val videoFormat = MediaFormat.createVideoFormat(
             MediaFormat.MIMETYPE_VIDEO_AVC,
             width, height
         ).apply {
             setInteger(MediaFormat.KEY_BIT_RATE, bitrate)      // 码率，如 2000000
             setInteger(MediaFormat.KEY_FRAME_RATE, 30)         // 帧率
             setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)    // I帧间隔
-            setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
+            setInteger(
+                MediaFormat.KEY_COLOR_FORMAT,
+                MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface
+            )
         }
 
-        codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+        codec?.configure(videoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
 
-        encodeSurface = codec.createInputSurface() // 这个Surface要被OpenGL用来绘制
-        codec.start()
+        encodeSurface = codec?.createInputSurface() // 这个Surface要被OpenGL用来绘制
+        codec?.start()
+    }
+
+    interface AudioBytesMediaCodeCallback {
+        fun onEncodedData(data: ByteArray, info: MediaCodec.BufferInfo)
     }
 
 
     /*
     * 开启一个线程读取编码数据
     * */
+    fun startOutputThread(callback: AudioBytesMediaCodeCallback) {
+        isRunning = true
+        outputThread = Thread {
+            val bufferInfo = MediaCodec.BufferInfo()
 
+            while (isRunning) {
+                val outputIndex = codec?.dequeueOutputBuffer(bufferInfo, 10_000L) ?: break
+
+                when {
+                    outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                        // SPS/PPS 等格式信息变化，可在此获取新格式
+                        val newFormat = codec?.outputFormat
+                        format = newFormat
+                        println("Encoder Output format changed: $newFormat")
+                    }
+
+                    outputIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> {
+                        // 超时，没有数据，继续等待
+                    }
+
+                    outputIndex >= 0 -> {
+                        val outputBuffer = codec?.getOutputBuffer(outputIndex) ?: continue
+
+                        // 跳过 codec config 帧（SPS/PPS 已通过 INFO_OUTPUT_FORMAT_CHANGED 处理）
+                        if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
+                            codec?.releaseOutputBuffer(outputIndex, false)
+                            continue
+                        }
+
+                        // 读取编码数据
+                        val data = ByteArray(bufferInfo.size)
+                        outputBuffer.position(bufferInfo.offset)
+                        outputBuffer.limit(bufferInfo.offset + bufferInfo.size)
+                        outputBuffer.get(data)
+
+                        // 回调出去（推流 / 写文件等）
+                        callback.onEncodedData(data, bufferInfo)
+
+                        // 必须释放，否则编码器会卡住
+                        codec?.releaseOutputBuffer(outputIndex, false)
+                    }
+                }
+            }
+        }.also { it.start() }
+    }
+
+    fun stop() {
+        isRunning = false
+        outputThread?.join()
+        outputThread = null
+
+        codec?.stop()
+        codec?.release()
+        codec = null
+
+        encodeSurface?.release()
+        encodeSurface = null
+    }
 
 
 }
