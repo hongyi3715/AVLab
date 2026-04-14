@@ -55,39 +55,30 @@ class Camera264Encoder {
             val bufferInfo = MediaCodec.BufferInfo()
 
             while (isRunning) {
-                val outputIndex = codec?.dequeueOutputBuffer(bufferInfo, 10_000L) ?: break
+                while (true) {
+                    val outputIndex = codec?.dequeueOutputBuffer(bufferInfo, 1000) ?: break
 
-                when {
-                    outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                        // SPS/PPS 等格式信息变化，可在此获取新格式
-                        val newFormat = codec?.outputFormat
-                        format = newFormat
-                        println("Encoder Output format changed: $newFormat")
+                    if (outputIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
+                        break
                     }
 
-                    outputIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> {
-                        // 超时，没有数据，继续等待
-                    }
-
-                    outputIndex >= 0 -> {
+                    if (outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                        format = codec?.outputFormat
+                    } else if (outputIndex >= 0) {
                         val outputBuffer = codec?.getOutputBuffer(outputIndex) ?: continue
 
-                        // 跳过 codec config 帧（SPS/PPS 已通过 INFO_OUTPUT_FORMAT_CHANGED 处理）
                         if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
                             codec?.releaseOutputBuffer(outputIndex, false)
                             continue
                         }
 
-                        // 读取编码数据
                         val data = ByteArray(bufferInfo.size)
                         outputBuffer.position(bufferInfo.offset)
                         outputBuffer.limit(bufferInfo.offset + bufferInfo.size)
                         outputBuffer.get(data)
 
-                        // 回调出去（推流 / 写文件等）
                         callback.onEncodedData(data, bufferInfo)
 
-                        // 必须释放，否则编码器会卡住
                         codec?.releaseOutputBuffer(outputIndex, false)
                     }
                 }

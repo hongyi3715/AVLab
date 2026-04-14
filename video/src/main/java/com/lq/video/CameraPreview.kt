@@ -1,5 +1,7 @@
 package com.lq.video
 
+import android.view.TextureView
+import androidx.camera.view.PreviewView
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -18,7 +20,7 @@ fun CameraPreview(
 
     // 创建并记住 PreviewView
     val previewView = remember {
-        GLCameraView(context)
+        TextureView(context)
     }
 
     // 当 lifecycleOwner 改变时重新绑定

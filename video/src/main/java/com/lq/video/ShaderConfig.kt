@@ -55,17 +55,23 @@ class ShaderConfig {
     """.trimIndent()
 
     private val fragmentShader = """
-        #extension GL_OES_EGL_image_external : require
+       #extension GL_OES_EGL_image_external : require
+precision mediump float;
 
-        precision mediump float;
+varying vec2 vTexCoord;
+uniform samplerExternalOES uTexture;
 
-        uniform samplerExternalOES uTexture;
-        varying vec2 vTexCoord;
+void main() {
+    vec4 color = texture2D(uTexture, vTexCoord);
 
-        void main() {
-            gl_FragColor = texture2D(uTexture, vTexCoord);
-        }
+    // 灰度计算（经典权重）
+    float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+
+    gl_FragColor = vec4(vec3(gray), 1.0);
+}
     """.trimIndent()
+
+
 
 
     var positionHandle: Int = 0
@@ -112,6 +118,7 @@ class ShaderConfig {
         if (result[0] == 0) {
             val error = GLES20.glGetShaderInfoLog(shader)
             GLES20.glDeleteShader(shader)
+            println("Compile Error:$error")
             throw RuntimeException(error)
         }
 
@@ -125,5 +132,10 @@ class ShaderConfig {
         texMatrixHandle = GLES20.glGetUniformLocation(program, "uTexMatrix")
     }
 
+    fun initData():Int{
+        val program = createProgram()
+
+        return program
+    }
 
 }
