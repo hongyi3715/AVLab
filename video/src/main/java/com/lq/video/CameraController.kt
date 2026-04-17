@@ -6,8 +6,6 @@ import android.graphics.SurfaceTexture
 import android.media.MediaCodec
 import android.os.Handler
 import android.os.HandlerThread
-import android.os.Looper
-import android.util.Log
 import android.view.Surface
 import android.view.TextureView
 import androidx.camera.core.CameraSelector
@@ -28,6 +26,10 @@ class CameraController(private val context: Context) {
     val glThread = HandlerThread("GLThread").also { it.start() }
     val glHandler = Handler(glThread.looper)
 
+    val encoderThread = HandlerThread("EncodeThread").also { it.start() }
+
+    val encodeHandler = Handler(encoderThread.looper)
+
     private val encoder = Camera264Encoder()
 
     @SuppressLint("MissingPermission")
@@ -42,7 +44,7 @@ class CameraController(private val context: Context) {
             setUpCamera(previewView, cameraProviderFuture, lifecycleOwner)
         }, mainExecutor)
     }
-    private var previewSurface: Surface? = null
+
     private fun setUpCamera(
         textureView: TextureView,
         cameraProviderFuture: ListenableFuture<ProcessCameraProvider>,
@@ -55,10 +57,9 @@ class CameraController(private val context: Context) {
         val preview = Preview.Builder()
             .build()
 
-        var surfaceTexture: SurfaceTexture? = null
 
         encoder.createEncoder(1600, 1200, 2 * 1000 * 1000)
-        encoder.startOutputThread(object : Camera264Encoder.AudioBytesMediaCodeCallback{
+        encoder.startOutputThread(object : Camera264Encoder.AudioBytesMediaCodeCallback {
             override fun onEncodedData(
                 data: ByteArray,
                 info: MediaCodec.BufferInfo
@@ -67,39 +68,57 @@ class CameraController(private val context: Context) {
             }
 
         })
-        preview.setSurfaceProvider  { request ->
-            if(previewSurface==null) previewSurface = Surface(surfaceTexture)
-            request.provideSurface(previewSurface!!, mainExecutor) { result ->
-                previewSurface?.release()
-//                        surfaceTexture?.release()
-            }
-        }
+
         glHandler.post {
             val eglHelper = EglHelper()
             eglHelper.initEgl()
-            eglHelper.initSurfaces(textureView.surfaceTexture!!, encoder.encodeSurface!!)
+            val previewSurface = Surface(textureView.surfaceTexture!!)
+            eglHelper.initSurfaces(previewSurface, encoder.encodeSurface!!)
 
             val oesTextureId = openGlConfig.createOESTexture()
-            surfaceTexture = SurfaceTexture(oesTextureId)
+            val surfaceTexture = SurfaceTexture(oesTextureId)
             surfaceTexture.setDefaultBufferSize(1600, 1200)
 
             eglHelper.makeCurrent2Screen()
             val programId = shaderConfig.initData()
             shaderConfig.initHandler(programId)
-            surfaceTexture.setOnFrameAvailableListener {
 
+            // ✅ 指定 glHandler，保证 listener 在 GL 线程执行
+            surfaceTexture.setOnFrameAvailableListener({
                 surfaceTexture.updateTexImage()
-
                 surfaceTexture.getTransformMatrix(shaderConfig.texMatrix)
 
                 eglHelper.makeCurrent2Screen()
                 openGlConfig.drawFrame(programId, shaderConfig, oesTextureId)
                 eglHelper.swapBuffers2Screen()
 
-              /*  eglHelper.makeCurrent2Encoder()
-                openGlConfig.drawFrame(programId, shaderConfig, oesTextureId)
-                eglHelper.eglPresentationTime(surfaceTexture.timestamp)
-                eglHelper.swapBuffers2Encoder()*/
+                val timestamp = surfaceTexture.timestamp
+                encodeHandler.post {
+                    eglHelper.makeCurrent2Encoder()
+                    openGlConfig.drawFrame(programId, shaderConfig, oesTextureId)
+                    eglHelper.eglPresentationTime(timestamp)   // ✅ 用局部变量，不跨线程访问
+                    eglHelper.swapBuffers2Encoder()
+                }
+            }, glHandler)  // ✅ 关键：绑定到 glHandler
+
+            // ✅ surfaceTexture 创建完后再提供给 camera
+            val cameraSurface = Surface(surfaceTexture)
+            mainExecutor.execute {
+                preview.setSurfaceProvider { request ->
+                    request.provideSurface(cameraSurface, mainExecutor) {
+                        cameraSurface.release()
+                    }
+                }
+                try {
+                    cameraProvider.unbindAll()
+                    cameraProvider.bindToLifecycle(
+                        lifecycleOwner,
+                        CameraSelector.DEFAULT_FRONT_CAMERA,
+                        preview,
+                    )
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
         try {

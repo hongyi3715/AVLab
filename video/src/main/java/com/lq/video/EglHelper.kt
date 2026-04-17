@@ -12,13 +12,16 @@ import android.view.Surface
 class EglHelper {
 
     private var eglDisplay: EGLDisplay? = null
-    private var eglContext: EGLContext? = null
     private var eglConfig: EGLConfig? = null
     private var previewEglSurface: EGLSurface? = null
     private var encoderEglSurface: EGLSurface? = null
 
+    private var previewContext: EGLContext? = null
 
-     fun initEgl() {
+    private var encoderContext: EGLContext? = null
+
+
+    fun initEgl() {
         eglDisplay = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY)
         EGL14.eglInitialize(eglDisplay, null, 0, null, 0)
 
@@ -40,39 +43,39 @@ class EglHelper {
             EGL14.EGL_NONE
         )
 
-        eglContext = EGL14.eglCreateContext(
-            eglDisplay, eglConfig, EGL14.EGL_NO_CONTEXT, ctxAttrib, 0
-        )
+        previewContext = EGL14.eglCreateContext(eglDisplay, eglConfig, EGL14.EGL_NO_CONTEXT, ctxAttrib, 0)
+
+        encoderContext = EGL14.eglCreateContext(eglDisplay,eglConfig,previewContext,ctxAttrib,0)
+
     }
 
-     fun initSurfaces(previewSurfaceTexture: SurfaceTexture,encoderInputSurface: Surface) {
+    fun initSurfaces(previewSurface: Surface, encoderInputSurface: Surface) {
         previewEglSurface = EGL14.eglCreateWindowSurface(
-            eglDisplay, eglConfig, previewSurfaceTexture, intArrayOf(EGL14.EGL_NONE), 0
+            eglDisplay, eglConfig, previewSurface, intArrayOf(EGL14.EGL_NONE), 0
         )
-
         encoderEglSurface = EGL14.eglCreateWindowSurface(
             eglDisplay, eglConfig, encoderInputSurface, intArrayOf(EGL14.EGL_NONE), 0
         )
     }
 
 
-    fun makeCurrent2Screen(){
-        EGL14.eglMakeCurrent(eglDisplay, previewEglSurface, previewEglSurface, eglContext)
+    fun makeCurrent2Screen() {
+        EGL14.eglMakeCurrent(eglDisplay, previewEglSurface, previewEglSurface, previewContext)
     }
 
-    fun swapBuffers2Screen(){
+    fun swapBuffers2Screen() {
         EGL14.eglSwapBuffers(eglDisplay, previewEglSurface)
     }
 
-    fun makeCurrent2Encoder(){
-        EGL14.eglMakeCurrent(eglDisplay, encoderEglSurface, encoderEglSurface, eglContext)
+    fun makeCurrent2Encoder() {
+        EGL14.eglMakeCurrent(eglDisplay, encoderEglSurface, encoderEglSurface, encoderContext)
     }
 
-    fun swapBuffers2Encoder(){
+    fun swapBuffers2Encoder() {
         EGL14.eglSwapBuffers(eglDisplay, encoderEglSurface)
     }
 
-    fun eglPresentationTime(timestamp:Long){
+    fun eglPresentationTime(timestamp: Long) {
         EGLExt.eglPresentationTimeANDROID(
             eglDisplay,
             encoderEglSurface,
