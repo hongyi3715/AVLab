@@ -13,7 +13,7 @@ import java.net.NetworkInterface
 import javax.inject.Inject
 
 @HiltViewModel
-class MainViewModel @Inject constructor(private val repository: AudioRecordRepository) :
+class AudioViewModel @Inject constructor(private val repository: AudioRecordRepository) :
     ViewModel() {
 
     private var isRecording: Boolean = false

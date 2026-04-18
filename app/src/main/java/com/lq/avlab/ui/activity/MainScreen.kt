@@ -14,7 +14,7 @@ import com.lq.avlab.ui.theme.AVLabTheme
 
 
 @Composable
-fun Greeting(viewModel: MainViewModel = hiltViewModel()) {
+fun Greeting(viewModel: AudioViewModel = hiltViewModel()) {
     Column(modifier = Modifier.fillMaxSize().padding(40.dp)){
         Button(onClick = {
             viewModel.toggleRecord()

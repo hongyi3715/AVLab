@@ -9,6 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
+import com.lq.video.camera.CameraController
+import com.lq.video.view.MyTextureView
 
 @Composable
 fun CameraPreview(
@@ -18,14 +20,12 @@ fun CameraPreview(
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
 
-    // 创建并记住 PreviewView
     val previewView = remember {
-        TextureView(context)
+        MyTextureView(context)
     }
 
-    // 当 lifecycleOwner 改变时重新绑定
     LaunchedEffect(lifecycleOwner) {
-        controller.startPreview(lifecycleOwner, previewView)
+        controller.startPreview(previewView,lifecycleOwner)
     }
 
     AndroidView(
