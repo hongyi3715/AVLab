@@ -1,4 +1,4 @@
-package com.lq.video
+package com.lq.video.gl
 
 import android.opengl.GLES20
 import java.nio.ByteBuffer
@@ -74,14 +74,10 @@ void main() {
 
 
 
-    var positionHandle: Int = 0
-        private set
-    var texCoordHandle: Int = 0
-        private set
-    var textureHandle = 0
-        private set
-    var texMatrixHandle: Int = 0
-        private set
+    private var positionHandle: Int = 0
+    private var texCoordHandle: Int = 0
+    private var textureHandle = 0
+    private var texMatrixHandle: Int = 0
 
     val texMatrix = FloatArray(16)
 
@@ -130,6 +126,37 @@ void main() {
         texCoordHandle = GLES20.glGetAttribLocation(program, "aTexCoord")
         textureHandle = GLES20.glGetUniformLocation(program, "uTexture")
         texMatrixHandle = GLES20.glGetUniformLocation(program, "uTexMatrix")
+    }
+    
+    fun drawShader(){
+        GLES20.glEnableVertexAttribArray(positionHandle)
+        GLES20.glUniform1i(textureHandle, 0)
+        GLES20.glVertexAttribPointer(
+            positionHandle,
+            2,
+            GLES20.GL_FLOAT,
+            false,
+            0,
+            verTexBuffer
+        )
+
+        GLES20.glEnableVertexAttribArray(texCoordHandle)
+        GLES20.glVertexAttribPointer(
+            texCoordHandle,
+            2,
+            GLES20.GL_FLOAT,
+            false,
+            0,
+            texBuffer
+        )
+
+        GLES20.glUniformMatrix4fv(
+            texMatrixHandle,
+            1,
+            false,
+            texMatrix,
+            0
+        )
     }
 
     fun initData():Int{

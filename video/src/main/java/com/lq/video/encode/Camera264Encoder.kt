@@ -1,4 +1,4 @@
-package com.lq.video
+package com.lq.video.encode
 
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
@@ -57,9 +57,8 @@ class Camera264Encoder {
             while (isRunning) {
                 while (true) {
                     val outputIndex = codec?.dequeueOutputBuffer(bufferInfo, 1000) ?: break
-
                     if (outputIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
-                        break
+//                        break
                     }
 
                     if (outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {

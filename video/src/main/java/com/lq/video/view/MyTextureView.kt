@@ -8,7 +8,8 @@ import androidx.camera.core.Preview
 import androidx.camera.core.SurfaceRequest
 import androidx.core.content.ContextCompat
 
-class MyTextureView(context: Context) : TextureView(context), Preview.SurfaceProvider, TextureView.SurfaceTextureListener {
+class MyTextureView(context: Context) : TextureView(context), Preview.SurfaceProvider,
+    TextureView.SurfaceTextureListener {
 
     private var pendingRequest: SurfaceRequest? = null
     private var currentSurface: Surface? = null
@@ -16,6 +17,12 @@ class MyTextureView(context: Context) : TextureView(context), Preview.SurfacePro
     init {
         surfaceTextureListener = this
     }
+
+    interface SurfaceFrameAvailable {
+        fun onFrame()
+    }
+
+    var surfaceFrameAvailableListener: SurfaceFrameAvailable? = null
 
     override fun onSurfaceRequested(request: SurfaceRequest) {
         val st = surfaceTexture
@@ -50,7 +57,7 @@ class MyTextureView(context: Context) : TextureView(context), Preview.SurfacePro
         width: Int,
         height: Int
     ) {
-
+        println("SurfaceTextureSizeChanged width:$width height:$height")
     }
 
     override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
@@ -58,10 +65,14 @@ class MyTextureView(context: Context) : TextureView(context), Preview.SurfacePro
     }
 
     private fun provideSurface(request: SurfaceRequest, st: SurfaceTexture) {
+        println("ProvideSurface width:${request.resolution.width} height:${request.resolution.height}")
         st.setDefaultBufferSize(request.resolution.width, request.resolution.height)
         val surface = Surface(st)
         currentSurface = surface
-        request.provideSurface(surface, ContextCompat.getMainExecutor(context)) {
+        st.setOnFrameAvailableListener {
+            surfaceFrameAvailableListener?.onFrame()
+        }
+        request.provideSurface(surface, ContextCompat.getMainExecutor(context)) { result ->
             surface.release()
             currentSurface = null
         }

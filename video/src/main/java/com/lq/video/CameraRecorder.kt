@@ -1,6 +1,7 @@
 package com.lq.video
 
 import android.media.MediaCodec
+import com.lq.video.encode.Camera264Encoder
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream

@@ -2,18 +2,15 @@ package com.lq.avlab.ui.activity
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.lq.video.CameraPreview
+import com.lq.video.view.CameraPreview
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.*
 import com.lq.video.camera.CameraController
 
-@Preview
 @Composable
 fun VideoScreen() {
     val context = androidx.compose.ui.platform.LocalContext.current

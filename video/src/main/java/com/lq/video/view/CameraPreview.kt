@@ -1,16 +1,12 @@
-package com.lq.video
+package com.lq.video.view
 
-import android.view.TextureView
-import androidx.camera.view.PreviewView
+import android.util.Log
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import com.lq.video.camera.CameraController
-import com.lq.video.view.MyTextureView
 
 @Composable
 fun CameraPreview(
@@ -20,16 +16,14 @@ fun CameraPreview(
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
 
-    val previewView = remember {
-        MyTextureView(context)
-    }
-
-    LaunchedEffect(lifecycleOwner) {
-        controller.startPreview(previewView,lifecycleOwner)
-    }
-
     AndroidView(
-        factory = { previewView },
-        modifier = modifier
+        modifier = modifier,
+        factory = {
+            MyTextureView(context).also { view ->
+                Log.d("CameraX", "factory 创建 view")
+                controller.startPreview(view, lifecycleOwner)
+            }
+        }
     )
+
 }

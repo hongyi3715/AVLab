@@ -1,4 +1,4 @@
-package com.lq.video
+package com.lq.video.gl
 
 import android.opengl.GLES11Ext
 import android.opengl.GLES20
@@ -24,48 +24,14 @@ class OpenGlConfig {
 
     fun drawFrame(
         program: Int,
-        shaderConfig: ShaderConfig,
         oesTextureId: Int
     ) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
 
-
-
         GLES20.glUseProgram(program)
-
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, oesTextureId)
-
-        GLES20.glEnableVertexAttribArray(shaderConfig.positionHandle)
-        GLES20.glUniform1i(shaderConfig.textureHandle, 0)
-        GLES20.glVertexAttribPointer(
-            shaderConfig.positionHandle,
-            2,
-            GLES20.GL_FLOAT,
-            false,
-            0,
-            shaderConfig.verTexBuffer
-        )
-
-        GLES20.glEnableVertexAttribArray(shaderConfig.texCoordHandle)
-        GLES20.glVertexAttribPointer(
-            shaderConfig.texCoordHandle,
-            2,
-            GLES20.GL_FLOAT,
-            false,
-            0,
-            shaderConfig.texBuffer
-        )
-
-        GLES20.glUniformMatrix4fv(
-            shaderConfig.texMatrixHandle,
-            1,
-            false,
-            shaderConfig.texMatrix,
-            0
-        )
-
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
     }
+
 
 }
