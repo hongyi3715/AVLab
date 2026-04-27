@@ -58,7 +58,7 @@ class Camera264Encoder {
                 while (true) {
                     val outputIndex = codec?.dequeueOutputBuffer(bufferInfo, 1000) ?: break
                     if (outputIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
-//                        break
+                        break
                     }
 
                     if (outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {

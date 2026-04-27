@@ -54,7 +54,7 @@ class ShaderConfig {
         }
     """.trimIndent()
 
-    private val fragmentShader = """
+    private val oesFragmentShader = """
        #extension GL_OES_EGL_image_external : require
 precision mediump float;
 
@@ -71,17 +71,32 @@ void main() {
 }
     """.trimIndent()
 
-
-
-
-    private var positionHandle: Int = 0
-    private var texCoordHandle: Int = 0
-    private var textureHandle = 0
-    private var texMatrixHandle: Int = 0
+    private val texture2DFragmentShader = """
+precision mediump float;
+varying vec2 vTexCoord;
+uniform sampler2D uTexture;
+void main() {
+    vec4 color = texture2D(uTexture, vTexCoord);
+    float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+    gl_FragColor = vec4(vec3(gray), 1.0);
+}
+""".trimIndent()
 
     val texMatrix = FloatArray(16)
 
-     fun createProgram(): Int {
+    val identityMatrix = floatArrayOf(
+        1f, 0f, 0f, 0f,
+        0f, 1f, 0f, 0f,
+        0f, 0f, 1f, 0f,
+        0f, 0f, 0f, 1f
+    )
+
+    val previewVertexBuffer: FloatBuffer =
+        ByteBuffer.allocateDirect(8 * 4)
+            .order(ByteOrder.nativeOrder())
+            .asFloatBuffer()
+
+     fun createOesProgram(): Int {
         val vertexShader = loadShader(
             GLES20.GL_VERTEX_SHADER,
             vertexShader
@@ -89,7 +104,28 @@ void main() {
 
         val fragmentShader = loadShader(
             GLES20.GL_FRAGMENT_SHADER,
-            fragmentShader
+            oesFragmentShader
+        )
+
+        val program = GLES20.glCreateProgram()
+
+        GLES20.glAttachShader(program, vertexShader)
+        GLES20.glAttachShader(program, fragmentShader)
+
+        GLES20.glLinkProgram(program)
+
+        return program
+    }
+
+    fun createTexture2DProgram():Int{
+        val vertexShader = loadShader(
+            GLES20.GL_VERTEX_SHADER,
+            vertexShader
+        )
+
+        val fragmentShader = loadShader(
+            GLES20.GL_FRAGMENT_SHADER,
+            texture2DFragmentShader
         )
 
         val program = GLES20.glCreateProgram()
@@ -121,48 +157,64 @@ void main() {
         return shader
     }
 
-    fun initHandler(program:Int){
-        positionHandle = GLES20.glGetAttribLocation(program, "aPosition")
-        texCoordHandle = GLES20.glGetAttribLocation(program, "aTexCoord")
-        textureHandle = GLES20.glGetUniformLocation(program, "uTexture")
-        texMatrixHandle = GLES20.glGetUniformLocation(program, "uTexMatrix")
+    fun initHandler(program: Int): ProgramHandles {
+        return ProgramHandles(
+            positionHandle = GLES20.glGetAttribLocation(program, "aPosition"),
+            texCoordHandle = GLES20.glGetAttribLocation(program, "aTexCoord"),
+            textureHandle = GLES20.glGetUniformLocation(program, "uTexture"),
+            texMatrixHandle = GLES20.glGetUniformLocation(program, "uTexMatrix")
+        )
     }
-    
-    fun drawShader(){
-        GLES20.glEnableVertexAttribArray(positionHandle)
-        GLES20.glUniform1i(textureHandle, 0)
+
+    fun drawShader(handles: ProgramHandles, matrix: FloatArray, vertexBuffer: FloatBuffer = verTexBuffer) {
+        GLES20.glEnableVertexAttribArray(handles.positionHandle)
+        GLES20.glUniform1i(handles.textureHandle, 0)
         GLES20.glVertexAttribPointer(
-            positionHandle,
-            2,
-            GLES20.GL_FLOAT,
-            false,
-            0,
-            verTexBuffer
+            handles.positionHandle, 2, GLES20.GL_FLOAT, false, 0, vertexBuffer
         )
 
-        GLES20.glEnableVertexAttribArray(texCoordHandle)
+        GLES20.glEnableVertexAttribArray(handles.texCoordHandle)
         GLES20.glVertexAttribPointer(
-            texCoordHandle,
-            2,
-            GLES20.GL_FLOAT,
-            false,
-            0,
-            texBuffer
+            handles.texCoordHandle, 2, GLES20.GL_FLOAT, false, 0, texBuffer
         )
 
         GLES20.glUniformMatrix4fv(
-            texMatrixHandle,
-            1,
-            false,
-            texMatrix,
-            0
+            handles.texMatrixHandle, 1, false, matrix, 0
         )
+
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
     }
 
-    fun initData():Int{
-        val program = createProgram()
+    fun updatePreviewVertexBuffer(
+        srcWidth: Int,
+        srcHeight: Int,
+        dstWidth: Int,
+        dstHeight: Int
+    ) {  //通过放大，裁剪即CenterCrop效果，避免不同尺寸发生预览变形
+        val srcRatio = srcWidth.toFloat() / srcHeight
+        val dstRatio = dstWidth.toFloat() / dstHeight
 
-        return program
+        val scaleX: Float
+        val scaleY: Float
+
+        if (srcRatio > dstRatio) {
+            scaleX = srcRatio / dstRatio
+            scaleY = 1f
+        } else {
+            scaleX = 1f
+            scaleY = dstRatio / srcRatio
+        }
+
+        previewVertexBuffer.clear()
+        previewVertexBuffer.put(
+            floatArrayOf(
+                -scaleX, -scaleY,
+                scaleX, -scaleY,
+                -scaleX,  scaleY,
+                scaleX,  scaleY
+            )
+        )
+        previewVertexBuffer.position(0)
     }
 
 }

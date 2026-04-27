@@ -27,15 +27,27 @@ class EGLSurfaceManager {
     }
 
     fun makeCurrentPreview() {
-        EGL14.eglMakeCurrent(display, previewSurface, previewSurface, context)
+        if (!EGL14.eglMakeCurrent(display, previewSurface, previewSurface, context)) {
+            throw RuntimeException("eglMakeCurrent preview failed: 0x${Integer.toHexString(EGL14.eglGetError())}")
+        }
     }
 
     fun makeCurrentEncoder() {
-        EGL14.eglMakeCurrent(display, encoderSurface, encoderSurface, context)
+        if (!EGL14.eglMakeCurrent(display, encoderSurface, encoderSurface, context)) {
+            throw RuntimeException("eglMakeCurrent encoder failed: 0x${Integer.toHexString(EGL14.eglGetError())}")
+        }
     }
 
     fun swapPreview() {
-        EGL14.eglSwapBuffers(display, previewSurface)
+        if (!EGL14.eglSwapBuffers(display, previewSurface)) {
+            throw RuntimeException("eglSwapBuffers preview failed: 0x${Integer.toHexString(EGL14.eglGetError())}")
+        }
+    }
+
+    fun swapEncoder() {
+        if (!EGL14.eglSwapBuffers(display, encoderSurface)) {
+            throw RuntimeException("eglSwapBuffers encoder failed: 0x${Integer.toHexString(EGL14.eglGetError())}")
+        }
     }
 
     fun presentationTime(timeStamp: Long?){
@@ -48,7 +60,4 @@ class EGLSurfaceManager {
         }
     }
 
-    fun swapEncoder() {
-        EGL14.eglSwapBuffers(display, encoderSurface)
-    }
 }

@@ -5,7 +5,6 @@ import android.opengl.GLES20
 class FboManager(val width: Int, val height: Int) {
     private val fboId = IntArray(1)
     private val fboTextureId = IntArray(1)
-
     init {
         // 1. 生成 FBO
         GLES20.glGenFramebuffers(1, fboId, 0)
@@ -19,8 +18,10 @@ class FboManager(val width: Int, val height: Int) {
             0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null)
 
         // 设置纹理参数
-        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR.toFloat())
-        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR.toFloat())
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
 
         // 3. 将纹理绑定到 FBO
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fboId[0])

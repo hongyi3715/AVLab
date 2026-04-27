@@ -2,6 +2,7 @@ package com.lq.video.gl
 
 import android.opengl.GLES11Ext
 import android.opengl.GLES20
+import android.opengl.GLES20.GL_TEXTURE_2D
 
 class OpenGlConfig {
 
@@ -26,11 +27,16 @@ class OpenGlConfig {
         program: Int,
         oesTextureId: Int
     ) {
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-
         GLES20.glUseProgram(program)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, oesTextureId)
+    }
+
+    fun draw2DTexture(program:Int,fboTextureId:Int){
+        GLES20.glUseProgram(program)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+        GLES20.glBindTexture(GL_TEXTURE_2D, fboTextureId)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
     }
 
 

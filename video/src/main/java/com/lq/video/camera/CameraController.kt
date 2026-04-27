@@ -2,7 +2,6 @@ package com.lq.video.camera
 
 import android.content.Context
 import android.graphics.SurfaceTexture
-import android.media.MediaCodec
 import android.opengl.GLES20
 import android.view.Surface
 import androidx.camera.core.CameraSelector
@@ -11,22 +10,25 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import com.google.common.util.concurrent.ListenableFuture
+import com.lq.video.CameraRecorder
 import com.lq.video.encode.Camera264Encoder
 import com.lq.video.view.MyTextureView
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.util.concurrent.Executor
 import com.lq.video.camera.CameraFlowState.*
-import com.lq.video.gl.EGLCore
 import com.lq.video.gl.EGLSurfaceManager
 import com.lq.video.gl.OpenGlConfig
 import com.lq.video.gl.ShaderConfig
 import com.lq.video.camera.CameraEvent.*
+import com.lq.video.gl.FboManager
+import com.lq.video.gl.ProgramHandles
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.concurrent.Executors
 
 class CameraController(private val context: Context) {
@@ -54,6 +56,8 @@ class CameraController(private val context: Context) {
         }
         .asCoroutineDispatcher()
 
+    private val coroutineScope = CoroutineScope(SupervisorJob() + glDispatcher)
+
     private val audioEncoderDispatcher = Executors.newSingleThreadExecutor { r ->
         Thread(r, "AudioEncoderThread").apply {
             priority = Thread.NORM_PRIORITY
@@ -61,8 +65,6 @@ class CameraController(private val context: Context) {
     }.asCoroutineDispatcher()
 
     private val encodeScope = CoroutineScope(audioEncoderDispatcher+SupervisorJob())
-
-    private val coroutineScope = CoroutineScope(SupervisorJob() + glDispatcher)
 
     fun startPreview(textureView: MyTextureView, lifecycleOwner: LifecycleOwner) = withException {
         this.textureView = textureView
@@ -73,6 +75,14 @@ class CameraController(private val context: Context) {
     fun stopPreview() = withException {
         release()
         dispatch(StopPreview)
+    }
+
+    fun startRecord(){
+
+    }
+
+    fun stopRecord(){
+        cameraRecoder.stopRecording()
     }
 
 
@@ -113,17 +123,12 @@ class CameraController(private val context: Context) {
 
     private val encoder = Camera264Encoder()
 
+    private val cameraRecoder = CameraRecorder(encoder)
     private fun initEncoder() = encodeScope.launch {
-        encoder.createEncoder(1600, 1200, 2 * 1000 * 1000)
-        encoder.startOutputThread(object : Camera264Encoder.AudioBytesMediaCodeCallback {
-            override fun onEncodedData(
-                data: ByteArray,
-                info: MediaCodec.BufferInfo
-            ) {
-                println("H264 Size:${data.size}")
-            }
+        cameraRecoder.coder.createEncoder(1600, 1200, 2 * 1000 * 1000)
+        val file = File(context.externalCacheDir, "${System.currentTimeMillis()}.h264")
 
-        })
+        cameraRecoder.startRecording(file)
         dispatch(InitializeOpenGL)
     }
 
@@ -133,6 +138,7 @@ class CameraController(private val context: Context) {
 
     private var previewSurface: Surface? = null
     private var surfaceTexture: SurfaceTexture? = null
+    private var fboManager: FboManager?=null
     private fun initOpenGL() = coroutineScope.launch {
 
         textureView?.surfaceTexture?.let {
@@ -148,39 +154,73 @@ class CameraController(private val context: Context) {
         val oesTextureId = openGlConfig.createOESTexture()
         surfaceTexture = SurfaceTexture(oesTextureId).apply {
             setDefaultBufferSize(1600,1200)
+            fboManager = FboManager(1600,1200)
             cameraSurface = Surface(this)
         }
 
-        val programId = shaderConfig.initData()
-        shaderConfig.initHandler(programId)
-
+        val oesProgram = shaderConfig.createOesProgram()
+        val textureProgram = shaderConfig.createTexture2DProgram()
+        val oesHandler = shaderConfig.initHandler(oesProgram)
+        val textureHandler = shaderConfig.initHandler(textureProgram)
         surfaceTexture?.setOnFrameAvailableListener {
-            drawFrame(programId,oesTextureId)
+            coroutineScope.launch {
+                drawFrame(oesProgram,textureProgram,oesTextureId,oesHandler,textureHandler)
+            }
         }
         withContext(Dispatchers.Main){
             dispatch(BindCamera)
         }
     }
 
-    private fun drawFrame(programId:Int,oesTextureId:Int) = coroutineScope.launch {
-        surfaceTexture?.updateTexImage()
-        surfaceTexture?.getTransformMatrix(shaderConfig.texMatrix)
+
+    val fboWidth = 1600
+    val fboHeight = 1200
+    private fun drawFrame(oesProgram:Int,textureProgram:Int,oesTextureId:Int,oesHandler: ProgramHandles,textureHandler: ProgramHandles)  {
+        val previewWidth = textureView?.width?:fboWidth
+        val previewHeight = textureView?.height?:fboHeight
+        val st = surfaceTexture ?: return
+
+        shaderConfig.updatePreviewVertexBuffer(
+            srcWidth = fboHeight,
+            srcHeight = fboWidth,
+            dstWidth = previewWidth,
+            dstHeight = previewHeight
+        )
+
+        st.updateTexImage()
+        st.getTransformMatrix(shaderConfig.texMatrix)
+        val timestamp = st.timestamp
 
         eglSurfaceManager.makeCurrentPreview()
-        openGlConfig.drawFrame(programId,  oesTextureId)
-        shaderConfig.drawShader()
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+        fboManager?.bind()
+        GLES20.glViewport(0, 0, fboWidth, fboHeight)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+
+        openGlConfig.drawFrame(oesProgram, oesTextureId)
+        shaderConfig.drawShader(oesHandler,shaderConfig.texMatrix)
+        val fboTexId = fboManager?.getTextureId()
+        fboManager?.unbind()
+
+        GLES20.glViewport(0, 0, previewWidth, previewHeight)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+
+        fboTexId?.let {
+            openGlConfig.draw2DTexture(textureProgram,it)
+            shaderConfig.drawShader(textureHandler,shaderConfig.identityMatrix,shaderConfig.previewVertexBuffer)
+        }
         eglSurfaceManager.swapPreview()
 
-        val timestamp = surfaceTexture?.timestamp
-        println("timestamp=${surfaceTexture?.timestamp}")
         eglSurfaceManager.makeCurrentEncoder()
-        shaderConfig.drawShader()
-        openGlConfig.drawFrame(programId,  oesTextureId)
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+        GLES20.glViewport(0, 0, fboWidth, fboHeight)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+
+        fboTexId?.let {
+            openGlConfig.draw2DTexture(textureProgram,it)
+            shaderConfig.drawShader(textureHandler,shaderConfig.identityMatrix)
+        }
+
         eglSurfaceManager.presentationTime(timestamp)
         eglSurfaceManager.swapEncoder()
-        println("ENCODER swap encoder called")
     }
 
 

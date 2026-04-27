@@ -10,26 +10,27 @@ import com.lq.video.view.CameraPreview
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.*
 import com.lq.video.camera.CameraController
+import java.io.File
 
 @Composable
 fun VideoScreen() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val controller = remember { CameraController(context) }
-    var isRecording by remember { mutableStateOf(false) }
+    var isRecording by remember { mutableStateOf(true) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         CameraPreview(
             controller = controller,
             modifier = Modifier.fillMaxWidth().fillMaxHeight()
         )
-
         Button(
             onClick = {
-
+                controller.stopRecord()
+                isRecording = false
             },
             modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(bottom = 32.dp)
         ) {
-            Text(if (isRecording) "停止录制" else "开始录制")
+            Text(if (isRecording) "开始录制" else "停止录制")
         }
     }
 }
