@@ -16,19 +16,27 @@ import java.io.File
 fun VideoScreen() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val controller = remember { CameraController(context) }
-    var isRecording by remember { mutableStateOf(true) }
+    var isRecording by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         CameraPreview(
             controller = controller,
-            modifier = Modifier.fillMaxWidth().fillMaxHeight()
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight()
         )
         Button(
             onClick = {
-                controller.stopRecord()
-                isRecording = false
+                if (isRecording) {
+                    controller.stopRecord()
+                } else {
+                    controller.startRecord()
+                }
+                isRecording = !isRecording
             },
-            modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(bottom = 32.dp)
+            modifier = Modifier
+                .align(androidx.compose.ui.Alignment.BottomCenter)
+                .padding(bottom = 32.dp)
         ) {
             Text(if (isRecording) "开始录制" else "停止录制")
         }

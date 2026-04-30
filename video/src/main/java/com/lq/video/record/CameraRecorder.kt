@@ -1,4 +1,4 @@
-package com.lq.video
+package com.lq.video.record
 
 import android.media.MediaCodec
 import com.lq.video.encode.Camera264Encoder
@@ -66,7 +66,7 @@ class CameraRecorder(val coder: Camera264Encoder) {
 
     // 结束录制时关闭
     fun stopRecording() {
-//        coder.stop()
+        coder.stop()
         outputStream?.flush()
         outputStream?.close()
         fos?.close()
