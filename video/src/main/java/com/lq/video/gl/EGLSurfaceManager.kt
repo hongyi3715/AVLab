@@ -60,29 +60,31 @@ class EGLSurfaceManager {
         }
     }
 
-    fun release() {
-        try {
-            // 先解绑
-            EGL14.eglMakeCurrent(
-                display,
-                EGL14.EGL_NO_SURFACE,
-                EGL14.EGL_NO_SURFACE,
-                EGL14.EGL_NO_CONTEXT
-            )
-
-            previewSurface?.let {
-                EGL14.eglDestroySurface(display, it)
-            }
-            previewSurface = null
-
-            encoderSurface?.let {
-                EGL14.eglDestroySurface(display, it)
-            }
-            encoderSurface = null
-
-        } catch (e: Exception) {
-            e.printStackTrace()
+    fun releaseEncoder(){
+        encoderSurface?.let {
+            EGL14.eglDestroySurface(display, it)
         }
+        encoderSurface = null
+    }
+
+    fun releasePreview(){
+        EGL14.eglMakeCurrent(
+            display,
+            EGL14.EGL_NO_SURFACE,
+            EGL14.EGL_NO_SURFACE,
+            EGL14.EGL_NO_CONTEXT
+        )
+
+        previewSurface?.let {
+            EGL14.eglDestroySurface(display, it)
+        }
+        previewSurface = null
+    }
+
+
+    fun release(){
+        releasePreview()
+        releaseEncoder()
     }
 
 }

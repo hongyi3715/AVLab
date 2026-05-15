@@ -38,7 +38,7 @@ fun VideoScreen() {
                 .align(androidx.compose.ui.Alignment.BottomCenter)
                 .padding(bottom = 32.dp)
         ) {
-            Text(if (isRecording) "开始录制" else "停止录制")
+            Text(if (isRecording) "停止录制" else "开始录制")
         }
     }
 }

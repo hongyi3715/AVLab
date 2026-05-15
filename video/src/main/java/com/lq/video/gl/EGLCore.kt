@@ -50,4 +50,8 @@ object EGLCore {
             0
         )
     }
+
+    fun release(){
+
+    }
 }

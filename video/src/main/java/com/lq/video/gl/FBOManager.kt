@@ -2,7 +2,7 @@ package com.lq.video.gl
 
 import android.opengl.GLES20
 
-class FboManager(val width: Int, val height: Int) {
+class FboManager(width: Int, height: Int) {
     private val fboId = IntArray(1)
     private val fboTextureId = IntArray(1)
     init {

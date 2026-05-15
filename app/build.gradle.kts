@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.hrouter.plugin)
 }
 
 android {
@@ -44,6 +45,9 @@ android {
 dependencies {
     implementation(project(":audio"))
     implementation(project(":video"))
+
+    implementation(libs.hrouter.core)
+    ksp(libs.hrouter.compiler)
 
     implementation(libs.hilt)
     implementation(libs.hilt.navigation.compose)
