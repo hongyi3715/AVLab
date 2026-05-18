@@ -1,6 +1,6 @@
 package com.lq.audio.data
 
-import com.lq.audio.AudioPacket
+import com.lq.audio.data.AudioPacket
 
 sealed interface PollResult {
     data class Packet(val packet: AudioPacket) : PollResult

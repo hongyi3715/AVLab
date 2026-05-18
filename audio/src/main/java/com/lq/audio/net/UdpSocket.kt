@@ -1,7 +1,7 @@
 package com.lq.audio.net
 
 import android.os.SystemClock
-import com.lq.audio.AudioPacket
+import com.lq.audio.data.AudioPacket
 import com.lq.audio.data.AudioTrace
 import java.net.DatagramPacket
 import java.net.DatagramSocket

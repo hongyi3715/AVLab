@@ -9,11 +9,12 @@ import androidx.compose.ui.unit.dp
 import com.lq.video.view.CameraPreview
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.*
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.lq.video.camera.CameraController
 import java.io.File
 
 @Composable
-fun VideoScreen() {
+fun VideoScreen(viewModel: RecordViewModel = hiltViewModel()) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val controller = remember { CameraController(context) }
     var isRecording by remember { mutableStateOf(false) }
@@ -21,6 +22,7 @@ fun VideoScreen() {
     Box(modifier = Modifier.fillMaxSize()) {
         CameraPreview(
             controller = controller,
+            recordPipeline = viewModel.videoRecordPipeline,
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
@@ -29,8 +31,10 @@ fun VideoScreen() {
             onClick = {
                 if (isRecording) {
                     controller.stopRecord()
+                    viewModel.stopRecord()
                 } else {
-                    controller.startRecord()
+                    controller.startRecord(viewModel.videoRecordPipeline)
+                    viewModel.startRecord()
                 }
                 isRecording = !isRecording
             },

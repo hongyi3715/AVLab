@@ -1,7 +1,7 @@
 package com.lq.audio.buffer
 
 import android.os.SystemClock
-import com.lq.audio.AudioPacket
+import com.lq.audio.data.AudioPacket
 import com.lq.audio.data.JitterBufferStats
 import com.lq.audio.data.PollResult
 import kotlinx.coroutines.channels.Channel

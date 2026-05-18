@@ -7,11 +7,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import com.lq.video.camera.CameraController
+import com.lq.video.encode.VideoRecordPipeline
 
 @Composable
 fun CameraPreview(
     modifier: Modifier = Modifier,
-    controller: CameraController
+    controller: CameraController,
+    recordPipeline: VideoRecordPipeline
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
@@ -21,7 +23,7 @@ fun CameraPreview(
         factory = {
             MyTextureView(context).also { view ->
                 Log.d("CameraX", "factory 创建 view")
-                controller.startPreview(view, lifecycleOwner)
+                controller.startPreview(view, lifecycleOwner,recordPipeline)
             }
         }
     )

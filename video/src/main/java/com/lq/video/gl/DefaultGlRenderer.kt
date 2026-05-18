@@ -128,7 +128,7 @@ class DefaultGlRenderer : GLRenderer {
         }
     }
 
-
+    private var baseNs = -1L
     private fun drawFrame() {
         if (oesHandler == null) return
         if (textureHandler == null) return
@@ -143,7 +143,6 @@ class DefaultGlRenderer : GLRenderer {
 
         st.updateTexImage()
         st.getTransformMatrix(shaderConfig.texMatrix)
-        val timestamp = st.timestamp
 
         eglSurfaceManager.makeCurrentPreview()
         fboManager?.bind()
@@ -179,7 +178,11 @@ class DefaultGlRenderer : GLRenderer {
             shaderConfig.drawShader(textureHandler!!, shaderConfig.identityMatrix)
         }
 
-        eglSurfaceManager.presentationTime(timestamp)
+        val now = st.timestamp
+        if (baseNs < 0) baseNs = now
+        val pts = now - baseNs
+
+        eglSurfaceManager.presentationTime(pts)
         eglSurfaceManager.swapEncoder()
     }
 

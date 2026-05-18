@@ -4,13 +4,14 @@ import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.os.SystemClock
-import com.lq.audio.AudioPacket
 import com.lq.audio.buffer.FrameAlignedRingBuffer
-import com.lq.audio.data.AudioTrace
 import com.lq.audio.data.AudioFrame
+import com.lq.audio.data.AudioPacket
+import com.lq.audio.data.AudioTrace
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import java.nio.ByteBuffer
 
 class AacEncoder {
 
@@ -28,11 +29,19 @@ class AacEncoder {
 
     private val encoder: MediaCodec
 
+    //用于网络封装
     private val _aacFlow = MutableSharedFlow<AudioPacket>(
         extraBufferCapacity = 64,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
     val aacFlow = _aacFlow.asSharedFlow()
+
+    //用于本地mp4封装
+    private val _audioEncodeEventFlow = MutableSharedFlow<AudioEncodeEvent>(
+        replay = 1,
+        extraBufferCapacity = 1
+    )
+    val audioEncodeEventFlow = _audioEncodeEventFlow.asSharedFlow()
 
     private var pts = 0L
     private val frameDurationUs = 1024_000_000L / sampleRate
@@ -114,6 +123,16 @@ class AacEncoder {
             val index = encoder.dequeueOutputBuffer(info, 0)
 
             when {
+                index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                    val newFormat = encoder.outputFormat
+                    println("Encoder format changed: $newFormat")
+                    _audioEncodeEventFlow.tryEmit(AudioEncodeEvent.Format(newFormat))
+                }
+
+                index == MediaCodec.INFO_TRY_AGAIN_LATER -> {
+                    break
+                }
+
                 index >= 0 -> {
                     val buffer = encoder.getOutputBuffer(index) ?: return
 
@@ -122,35 +141,49 @@ class AacEncoder {
                     buffer.limit(info.offset + info.size)
                     buffer.get(data)
 
-                    if (info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
+                    if(info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0){
                         csdData = data
-                    } else if (info.size > 0) {
-                        currentSequence++
-                        val audioPacket = AudioPacket(
-                            payload = data,
-                            seq = currentSequence,
-                            timestamp = info.presentationTimeUs,
-                            trace = audioTrace.also {
-                                it?.seq = currentSequence
-                                it?.encodeDoneTime =
-                                    SystemClock.elapsedRealtime()
-                            })
-                        _aacFlow.tryEmit(audioPacket)
+                        encoder.releaseOutputBuffer(index, false) //合成mp4时须释放
+                        continue
                     }
+
+                    if (info.size > 0) {
+//                        handleAacFlow(data,info,audioTrace)
+                        handleEventFlow(info,buffer)
+                    }
+
 
                     encoder.releaseOutputBuffer(index, false)
                 }
-
-                index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                    val newFormat = encoder.outputFormat
-                    println("Encoder format changed: $newFormat")
-                }
-
-                index == MediaCodec.INFO_TRY_AGAIN_LATER -> {
-                    break
-                }
             }
         }
+    }
+
+    private fun handleAacFlow(data: ByteArray,info: MediaCodec.BufferInfo,audioTrace: AudioTrace?){
+        currentSequence++
+        val audioPacket = AudioPacket(
+            payload = data,
+            seq = currentSequence,
+            timestamp = info.presentationTimeUs,
+            trace = audioTrace.also {
+                it?.seq = currentSequence
+                it?.encodeDoneTime =
+                    SystemClock.elapsedRealtime()
+            })
+        _aacFlow.tryEmit(audioPacket)
+    }
+
+    private fun handleEventFlow(info: MediaCodec.BufferInfo,buffer: ByteBuffer){
+        val byteBuffer = ByteBuffer.allocate(info.size)
+        buffer.position(info.offset)
+        buffer.limit(info.offset + info.size)
+        byteBuffer.put(buffer)
+        byteBuffer.flip()
+
+        val newInfo = MediaCodec.BufferInfo().apply {
+            set(0, info.size, info.presentationTimeUs, info.flags)
+        }
+        _audioEncodeEventFlow.tryEmit(AudioEncodeEvent.Data(byteBuffer,newInfo))
     }
 
     fun release() {

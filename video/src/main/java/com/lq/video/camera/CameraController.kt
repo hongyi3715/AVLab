@@ -14,9 +14,8 @@ import com.lq.video.gl.DefaultGlRenderer
 import com.lq.video.gl.GLRenderer
 import com.lq.video.view.MyTextureView
 import java.util.concurrent.Executor
-import com.lq.video.encode.RecordingPipeline
+import com.lq.video.encode.VideoRecordPipeline
 import kotlinx.coroutines.launch
-import java.io.File
 
 class CameraController(private val context: Context) {
 
@@ -30,19 +29,18 @@ class CameraController(private val context: Context) {
 
     private var textureView: MyTextureView? = null
 
-    val recordingPipeline = RecordingPipeline()
 
     val glRenderer: GLRenderer = DefaultGlRenderer()
 
-    fun startPreview(textureView: MyTextureView, lifecycleOwner: LifecycleOwner) = withException {
+    fun startPreview(textureView: MyTextureView, lifecycleOwner: LifecycleOwner,recordPipeline: VideoRecordPipeline) = withException {
         this.textureView = textureView
 
         cameraProviderFuture.addListener({
             cameraProvider = cameraProviderFuture.get()
 
             val previewSurface = Surface(requireNotNull(textureView.surfaceTexture))
-            recordingPipeline.prepare(1600, 1200, 15_000_000)
-            val encoderSurface = requireNotNull(recordingPipeline.inputSurface)
+            recordPipeline.prepare(1600, 1200, 15_000_000)
+            val encoderSurface = requireNotNull(recordPipeline.inputSurface)
 
             lifecycleOwner.lifecycleScope.launch {
                 glRenderer.start(
@@ -71,16 +69,13 @@ class CameraController(private val context: Context) {
         }, mainExecutor)
     }
 
-    fun startRecord() {
-        val file = File(context.externalCacheDir, "${System.currentTimeMillis()}.mp4")
-        recordingPipeline.prepare(1600, 1200, 15_000_000)
-        glRenderer.attachEncoderSurface(requireNotNull(recordingPipeline.inputSurface))
-        recordingPipeline.start(file)
+    fun startRecord(recordPipeline: VideoRecordPipeline) {
+        recordPipeline.prepare(1600, 1200, 15_000_000)
+        glRenderer.attachEncoderSurface(requireNotNull(recordPipeline.inputSurface))
     }
 
     fun stopRecord() {
         glRenderer.detachEncoderSurface()
-        recordingPipeline.stop()
     }
 
 

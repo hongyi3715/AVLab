@@ -1,6 +1,4 @@
-package com.lq.audio
-
-import com.lq.audio.data.AudioTrace
+package com.lq.audio.data
 
 data class AudioPacket(
     val seq: Int,          // 递增序号

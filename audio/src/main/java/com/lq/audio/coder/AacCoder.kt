@@ -15,7 +15,7 @@ class AacCoder {
 
     fun  encode(pcm: AudioFrame) = encoder.encode(pcm)
 
-    suspend fun decode(frame: AudioFrame) = decoder.decode(frame)
+    fun decode(frame: AudioFrame) = decoder.decode(frame)
 
 
 }

@@ -20,74 +20,31 @@ class AudioViewModel @Inject constructor(private val repository: AudioRecordRepo
 
     var recordState: RecordState = RecordState.Idle
 
-    private val isClient = false
 
     init {
         printAllIPs()
         initAll()
     }
 
-    private fun initData() {
-        viewModelScope.launch(Dispatchers.IO) {
-            if (isClient) {
-                launch {
-                    repository.initEncoder()
-                }
-                launch {
-                    repository.initRecordFlow()
-                }
-                launch {
-                    repository.recordState.collect {
-                        Log.d("录音状态", "State: $it")
-                        recordState = it
-                        isRecording = it == RecordState.Recording
-                    }
-                }
-            } else {
-                launch {
-                    repository.initReceiver(viewModelScope)
-                }
-
-                launch { //持续接收
-                    repository.initJitterBuffer()
-                }
-
-                launch {//解码
-                    repository.handleDecodeAudio()
-                }
-
-                launch {
-                    repository.playState.collect {
-                        println("播放状态:$it")
-                    }
-                }
-            }
-        }
-    }
-
     private fun initAll() = viewModelScope.launch(Dispatchers.IO){
-        launch {
-            repository.initReceiver(viewModelScope)
+        launch { //监听模拟的udp数据接受
+            repository.initPlayPipeline(viewModelScope)
         }
 
-        launch { //持续接收
-            repository.initJitterBuffer()
-        }
-
-        launch {//解码
+        launch {//监听解码音频
             repository.handleDecodeAudio()
         }
 
-        launch {
+        launch { //监听播放状态
             repository.playState.collect {
                 println("播放状态:$it")
             }
         }
-        launch {
-            repository.initEncoder()
+        launch { //监听编码音频
+//            repository.initEncoder(viewModelScope)
         }
-        launch {
-            repository.initRecordFlow()
+        launch { //监听录音音频
+            repository.initRecordFlow(viewModelScope)
         }
         launch {
             repository.recordState.collect {
