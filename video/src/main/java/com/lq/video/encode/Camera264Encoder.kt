@@ -4,6 +4,12 @@ import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.view.Surface
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import java.nio.ByteBuffer
 
 class Camera264Encoder {
 
@@ -19,6 +25,12 @@ class Camera264Encoder {
 
     @Volatile
     private var isRunning = false
+    private val _stateFlow = MutableStateFlow<EncoderState>(EncoderState.IDLE)
+    val stateFlow = _stateFlow.asStateFlow()
+
+    private val _eventFlow = MutableSharedFlow<EncoderEvent>(
+        extraBufferCapacity = 64, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val eventFlow = _eventFlow.asSharedFlow()
 
     fun createEncoder(width: Int, height: Int, bitrate: Int) {
         codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
@@ -41,59 +53,73 @@ class Camera264Encoder {
         codec?.start()
     }
 
-    interface AudioBytesMediaCodeCallback {
-        fun onEncodedData(data: ByteArray, info: MediaCodec.BufferInfo)
-    }
+
 
 
     /*
     * 开启一个线程读取编码数据
     * */
-    fun startOutputThread(callback: AudioBytesMediaCodeCallback) {
+    fun startOutputThread() {
         isRunning = true
+        _stateFlow.value = EncoderState.RUNNING
         outputThread = Thread {
             val bufferInfo = MediaCodec.BufferInfo()
-
-            while (isRunning) {
-                while (true) {
-                    val outputIndex = codec?.dequeueOutputBuffer(bufferInfo, 1000) ?: break
-                    if (outputIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
-                        break
-                    }
-
-                    if (outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                        format = codec?.outputFormat
-                    } else if (outputIndex >= 0) {
-                        val outputBuffer = codec?.getOutputBuffer(outputIndex) ?: continue
-
-                        if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
-                            codec?.releaseOutputBuffer(outputIndex, false)
-                            continue
+            while (isRunning){
+                val currentCodec = codec ?: break
+                when(val outputIndex = currentCodec.dequeueOutputBuffer(bufferInfo, 1000)){
+                    MediaCodec.INFO_TRY_AGAIN_LATER->{ continue }
+                    MediaCodec.INFO_OUTPUT_FORMAT_CHANGED->{
+                        format = currentCodec.outputFormat
+                        format?.let {
+                            _eventFlow.tryEmit(EncoderEvent.Format(it))
                         }
-
-                        val data = ByteArray(bufferInfo.size)
-                        outputBuffer.position(bufferInfo.offset)
-                        outputBuffer.limit(bufferInfo.offset + bufferInfo.size)
-                        outputBuffer.get(data)
-
-                        callback.onEncodedData(data, bufferInfo)
-
-                        codec?.releaseOutputBuffer(outputIndex, false)
+                    }
+                    else  -> {
+                        if(outputIndex>=0){
+                            val outputBuffer = currentCodec.getOutputBuffer(outputIndex) ?: continue
+                            if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) { //todo 本地合成mp4不需要config帧
+                                currentCodec.releaseOutputBuffer(outputIndex, false)
+                                continue
+                            }
+                            handleEncoderData(bufferInfo,outputBuffer,outputIndex,currentCodec)
+                        }
                     }
                 }
             }
         }.also { it.start() }
     }
 
+    //todo new+copy所带来的性能消耗
+    private fun handleEncoderData(bufferInfo: MediaCodec.BufferInfo,outputBuffer: ByteBuffer,outputIndex:Int,currentCodec: MediaCodec){
+        try {
+            val bufferCopy = ByteBuffer.allocate(bufferInfo.size)
+            outputBuffer.position(bufferInfo.offset)
+            outputBuffer.limit(bufferInfo.offset + bufferInfo.size)
+            bufferCopy.put(outputBuffer)
+            bufferCopy.flip()
+
+            val newInfo = MediaCodec.BufferInfo().apply {
+                set(0, bufferInfo.size, bufferInfo.presentationTimeUs, bufferInfo.flags)
+            }
+            _eventFlow.tryEmit(EncoderEvent.Data(bufferCopy,newInfo))
+            currentCodec.releaseOutputBuffer(outputIndex, false)
+        }catch (e: Exception){
+            _stateFlow.value = EncoderState.ERROR(e)
+        }
+    }
+
     fun stop() {
+        if (!isRunning) return
         isRunning = false
-        outputThread?.join()
+        _stateFlow.value = EncoderState.STOPPED
+
+        outputThread?.join(300) //超时
         outputThread = null
 
         codec?.stop()
         codec?.release()
-        codec = null
 
+        codec = null
         encodeSurface?.release()
         encodeSurface = null
     }

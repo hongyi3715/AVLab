@@ -23,7 +23,7 @@ class CameraRecorder(val coder: Camera264Encoder) {
         fos = FileOutputStream(outputFile, false)
         outputStream = BufferedOutputStream(fos, 1024 * 64) // 64KB 缓冲
 
-        coder.startOutputThread(object : Camera264Encoder.AudioBytesMediaCodeCallback {
+       /* coder.startOutputThread(object : Camera264Encoder.AudioBytesMediaCodeCallback {
             override fun onEncodedData(data: ByteArray, info: MediaCodec.BufferInfo) {
                 val isKeyFrame = info.flags and MediaCodec.BUFFER_FLAG_KEY_FRAME != 0
 
@@ -45,7 +45,7 @@ class CameraRecorder(val coder: Camera264Encoder) {
 
                 writeToFile(data)
             }
-        })
+        })*/
     }
 
     private fun writeToFile(bytes: ByteArray) {

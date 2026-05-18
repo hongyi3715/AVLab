@@ -14,7 +14,7 @@ import com.lq.video.gl.DefaultGlRenderer
 import com.lq.video.gl.GLRenderer
 import com.lq.video.view.MyTextureView
 import java.util.concurrent.Executor
-import com.lq.video.record.RecordingPipeline
+import com.lq.video.encode.RecordingPipeline
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -72,7 +72,7 @@ class CameraController(private val context: Context) {
     }
 
     fun startRecord() {
-        val file = File(context.externalCacheDir, "${System.currentTimeMillis()}.h264")
+        val file = File(context.externalCacheDir, "${System.currentTimeMillis()}.mp4")
         recordingPipeline.prepare(1600, 1200, 15_000_000)
         glRenderer.attachEncoderSurface(requireNotNull(recordingPipeline.inputSurface))
         recordingPipeline.start(file)

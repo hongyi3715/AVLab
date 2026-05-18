@@ -1,11 +1,12 @@
 package com.lq.video.encode
 
-enum class EncoderState {
-    IDLE,
-    PREPARED,
-    RUNNING,
-    STOPPING,
-    RELEASED,
-    ERROR
+
+sealed class EncoderState {
+    data object IDLE: EncoderState()
+    data object RUNNING: EncoderState()
+
+    data object STOPPED: EncoderState()
+
+    data class ERROR(val exception: Exception): EncoderState()
 }
 
