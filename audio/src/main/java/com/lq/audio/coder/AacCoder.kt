@@ -1,6 +1,8 @@
 package com.lq.audio.coder
 
 import com.lq.audio.data.AudioFrame
+import com.lq.audio.data.AudioTrace
+import com.lq.audio.data.AudioEncodedFrame
 
 class AacCoder {
 
@@ -15,7 +17,14 @@ class AacCoder {
 
     fun  encode(pcm: AudioFrame) = encoder.encode(pcm)
 
-    fun decode(frame: AudioFrame) = decoder.decode(frame)
 
-
+    fun decode(data: ByteArray, ptsUs: Long, trace: AudioTrace?) {
+        decoder.decode(
+            AudioEncodedFrame(
+                data = data,
+                ptsUs = ptsUs,
+                trace = trace
+            )
+        )
+    }
 }

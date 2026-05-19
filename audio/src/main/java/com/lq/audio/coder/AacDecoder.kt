@@ -3,18 +3,14 @@ package com.lq.audio.coder
 import android.media.MediaCodec
 import android.media.MediaFormat
 import android.os.SystemClock
-import com.lq.audio.data.AudioFrame
 import com.lq.audio.data.AudioTrace
+import com.lq.audio.data.AudioEncodedFrame
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.nio.ByteBuffer
 
 class AacDecoder {
@@ -24,14 +20,12 @@ class AacDecoder {
 
     private val decoder: MediaCodec
 
-    private val _audioFlow = Channel<AudioFrame>(
+    private val _audioFlow = Channel<AudioEncodedFrame>(
         capacity = 10,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
     val audioFlow = _audioFlow.consumeAsFlow()
 
-    private var pts = 0L
-    private val frameDurationUs = 1024L * 1_000_000L / sampleRate
 
     // 输入 trace 队列，保证输出时对应正确
     private val traceQueue = ArrayDeque<AudioTrace?>()
@@ -57,14 +51,13 @@ class AacDecoder {
 
     private fun initDecode() = CoroutineScope(Dispatchers.IO).launch {
         val info = MediaCodec.BufferInfo()
-        while(true) {
+        while (true) {
             val outputIndex = decoder.dequeueOutputBuffer(info, 10_000)
             when {
-                outputIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> {
-                    // 不delay，下一次循环继续尝试
-                    continue
-                }
-                outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {}
+                outputIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> continue
+
+                outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> Unit
+
                 outputIndex >= 0 -> {
                     val buffer = decoder.getOutputBuffer(outputIndex) ?: continue
                     val pcm = ByteArray(info.size)
@@ -72,36 +65,34 @@ class AacDecoder {
                     val trace = traceQueue.removeFirstOrNull()
                     trace?.decodeOutputTime = SystemClock.elapsedRealtime()
 
-                    _audioFlow.send(AudioFrame(pcm, trace))
+                    _audioFlow.send(AudioEncodedFrame(pcm,info.presentationTimeUs, trace))
                     decoder.releaseOutputBuffer(outputIndex, false)
                 }
             }
         }
     }
 
-     fun decode(frame: AudioFrame) {
-        val trace = frame.trace
-        trace?.decodeStartTime = SystemClock.elapsedRealtime()
+    fun decode(frame: AudioEncodedFrame) {
 
         val inputIndex = decoder.dequeueInputBuffer(5_000)
         if (inputIndex < 0) return
+
+        frame.trace?.decodeStartTime = SystemClock.elapsedRealtime()
 
         val inputBuffer = decoder.getInputBuffer(inputIndex) ?: return
         inputBuffer.clear()
         inputBuffer.put(frame.data)
 
         // 先保存 trace，对应这个输入 AAC 帧
-        traceQueue.addLast(trace)
+        traceQueue.addLast(frame.trace)
 
         decoder.queueInputBuffer(
             inputIndex,
             0,
             frame.data.size,
-            pts,
+            frame.ptsUs,
             0
         )
-        pts += frameDurationUs
-
     }
 
 }

@@ -43,6 +43,8 @@ class RecordPipeline {
                             muxer?.writeVideoData(it.data, it.bufferInfo)
                         }
                     }
+
+                    else->{}
                 }
             }
         }

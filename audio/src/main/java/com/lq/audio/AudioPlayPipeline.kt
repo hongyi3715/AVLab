@@ -3,8 +3,8 @@ package com.lq.audio
 import android.os.SystemClock
 import com.lq.audio.buffer.JitterBuffer
 import com.lq.audio.coder.AacDecoder
-import com.lq.audio.data.AudioFrame
 import com.lq.audio.data.AudioPacket
+import com.lq.audio.data.AudioEncodedFrame
 import com.lq.audio.data.PollResult
 import com.lq.audio.net.UdpSocket
 import com.lq.audio.player.AudioTrackManager
@@ -80,7 +80,7 @@ class AudioPlayPipeline {
             when (val result = jitterBuffer.pollFirst()) {
 
                 is PollResult.Packet -> {
-                    decoder.decode(AudioFrame(result.packet.payload, result.packet.trace))
+                    decoder.decode(AudioEncodedFrame(result.packet.payload, result.packet.timestamp,result.packet.trace))
                     delay(frameDuration)
                 }
 

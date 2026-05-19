@@ -113,6 +113,7 @@ class AacEncoder {
 
         drain(frame.trace)
         pts += frameDurationUs
+
     }
 
     private fun drain(audioTrace: AudioTrace?) {

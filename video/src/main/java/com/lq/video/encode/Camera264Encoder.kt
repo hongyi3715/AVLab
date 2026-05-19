@@ -4,6 +4,7 @@ import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.view.Surface
+import com.lq.video.decode.EncodedVideoFrame
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -81,7 +82,7 @@ class Camera264Encoder {
                                 currentCodec.releaseOutputBuffer(outputIndex, false)
                                 continue
                             }
-                            handleEncoderData(bufferInfo,outputBuffer,outputIndex,currentCodec)
+                            handleRTCEncoderData(bufferInfo,outputBuffer,outputIndex,currentCodec)
                         }
                     }
                 }
@@ -104,6 +105,27 @@ class Camera264Encoder {
             _eventFlow.tryEmit(EncoderEvent.Data(bufferCopy,newInfo))
             currentCodec.releaseOutputBuffer(outputIndex, false)
         }catch (e: Exception){
+            _stateFlow.value = EncoderState.ERROR(e)
+        }
+    }
+
+    private fun handleRTCEncoderData(bufferInfo: MediaCodec.BufferInfo,outputBuffer: ByteBuffer,outputIndex:Int,currentCodec: MediaCodec){
+        try {
+            outputBuffer.position(bufferInfo.offset)
+            outputBuffer.limit(bufferInfo.offset + bufferInfo.size)
+
+            val data = ByteArray(bufferInfo.size)
+            outputBuffer.get(data)
+
+            val frame = EncodedVideoFrame(
+                data = data,
+                ptsUs = bufferInfo.presentationTimeUs,
+                flags = bufferInfo.flags
+            )
+
+            _eventFlow.tryEmit(EncoderEvent.VideoFrame(frame))
+            currentCodec.releaseOutputBuffer(outputIndex, false)
+        } catch (e: Exception) {
             _stateFlow.value = EncoderState.ERROR(e)
         }
     }

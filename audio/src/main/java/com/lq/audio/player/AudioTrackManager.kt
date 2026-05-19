@@ -73,4 +73,15 @@ class AudioTrackManager {
         _stateFlow.value = PlayState.Idle
     }
 
+    /*获取时钟时间*/
+    fun getAudioClockUs(): Long? {
+        val track = audioTrack ?: return null
+        val timestamp = android.media.AudioTimestamp()
+        return if (track.getTimestamp(timestamp)) {
+            timestamp.framePosition * 1_000_000L / 44100L
+        } else {
+            null
+        }
+    }
+
 }
