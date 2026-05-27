@@ -79,8 +79,8 @@ class Camera264Encoder {
                         if(outputIndex>=0){
                             val outputBuffer = currentCodec.getOutputBuffer(outputIndex) ?: continue
                             if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) { //todo 本地合成mp4不需要config帧
-                                currentCodec.releaseOutputBuffer(outputIndex, false)
-                                continue
+//                                currentCodec.releaseOutputBuffer(outputIndex, false)
+//                                continue
                             }
                             handleRTCEncoderData(bufferInfo,outputBuffer,outputIndex,currentCodec)
                         }

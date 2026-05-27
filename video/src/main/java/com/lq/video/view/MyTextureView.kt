@@ -38,6 +38,7 @@ class MyTextureView(context: Context) : TextureView(context), Preview.SurfacePro
         width: Int,
         height: Int
     ) {
+        println("TV available: ${surface.hashCode()}")
         pendingRequest?.let {
             provideSurface(it, surface)
             pendingRequest = null
@@ -45,6 +46,7 @@ class MyTextureView(context: Context) : TextureView(context), Preview.SurfacePro
     }
 
     override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+        println("TV destroyed: ${surface.hashCode()}")
         pendingRequest?.willNotProvideSurface()
         pendingRequest = null
         currentSurface?.release()

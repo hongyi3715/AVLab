@@ -28,6 +28,5 @@ fun Greeting(viewModel: AudioViewModel = hiltViewModel()) {
 @Composable
 fun GreetingPreview() {
     AVLabTheme {
-        VideoScreen()
     }
 }

@@ -12,9 +12,9 @@ import androidx.lifecycle.lifecycleScope
 import com.google.common.util.concurrent.ListenableFuture
 import com.lq.video.gl.DefaultGlRenderer
 import com.lq.video.gl.GLRenderer
+import com.lq.video.pipeline.VideoEncoderPipeline
 import com.lq.video.view.MyTextureView
 import java.util.concurrent.Executor
-import com.lq.video.encode.VideoRecordPipeline
 import kotlinx.coroutines.launch
 
 class CameraController(private val context: Context) {
@@ -32,15 +32,16 @@ class CameraController(private val context: Context) {
 
     val glRenderer: GLRenderer = DefaultGlRenderer()
 
-    fun startPreview(textureView: MyTextureView, lifecycleOwner: LifecycleOwner,recordPipeline: VideoRecordPipeline) = withException {
+    fun startPreview(textureView: MyTextureView, lifecycleOwner: LifecycleOwner,encodePipeline: VideoEncoderPipeline) = withException {
         this.textureView = textureView
 
         cameraProviderFuture.addListener({
             cameraProvider = cameraProviderFuture.get()
 
             val previewSurface = Surface(requireNotNull(textureView.surfaceTexture))
-            recordPipeline.prepare(1600, 1200, 15_000_000)
-            val encoderSurface = requireNotNull(recordPipeline.inputSurface)
+            println("startPreview surfaceTexture=${textureView.surfaceTexture.hashCode()}")
+            encodePipeline.prepare(1600, 1200, 15_000_000)
+            val encoderSurface = requireNotNull(encodePipeline.inputSurface)
 
             lifecycleOwner.lifecycleScope.launch {
                 glRenderer.start(
@@ -69,9 +70,9 @@ class CameraController(private val context: Context) {
         }, mainExecutor)
     }
 
-    fun startRecord(recordPipeline: VideoRecordPipeline) {
-        recordPipeline.prepare(1600, 1200, 15_000_000)
-        glRenderer.attachEncoderSurface(requireNotNull(recordPipeline.inputSurface))
+    fun startRecord(encodePipeline: VideoEncoderPipeline) {
+        encodePipeline.prepare(1600, 1200, 15_000_000)
+        glRenderer.attachEncoderSurface(requireNotNull(encodePipeline.inputSurface))
     }
 
     fun stopRecord() {

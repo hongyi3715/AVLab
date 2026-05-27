@@ -3,7 +3,7 @@ package com.lq.avlab
 import com.lq.audio.AudioRecordPipeline
 import com.lq.audio.coder.AudioEncodeEvent
 import com.lq.video.encode.EncoderEvent
-import com.lq.video.encode.VideoRecordPipeline
+import com.lq.video.pipeline.VideoRecordPipeline
 import com.lq.video.muxer.Mp4Muxer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -69,7 +69,7 @@ class RecordPipeline {
             }
         }
 
-        video.start()
+        video.startEncode()
         audio.startRecord()
     }
 
@@ -80,7 +80,7 @@ class RecordPipeline {
     }
 
     suspend fun stop() {
-        video.stop()
+        video.stopEncode()
         audio.stopRecord()
         muxer?.stop()
     }

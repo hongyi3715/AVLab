@@ -14,15 +14,18 @@ import com.lq.video.camera.CameraController
 import java.io.File
 
 @Composable
-fun VideoScreen(viewModel: RecordViewModel = hiltViewModel()) {
+fun VideoScreen(host: String,onBack:()->Unit, viewModel: RecordViewModel = hiltViewModel()) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val controller = remember { CameraController(context) }
     var isRecording by remember { mutableStateOf(false) }
 
+    LaunchedEffect(host) {
+        viewModel.setHost(host)
+    }
     Box(modifier = Modifier.fillMaxSize()) {
         CameraPreview(
             controller = controller,
-            recordPipeline = viewModel.videoRecordPipeline,
+            recordPipeline = viewModel.encodePipeline,
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
@@ -33,7 +36,7 @@ fun VideoScreen(viewModel: RecordViewModel = hiltViewModel()) {
                     controller.stopRecord()
                     viewModel.stopRecord()
                 } else {
-                    controller.startRecord(viewModel.videoRecordPipeline)
+                    controller.startRecord(viewModel.encodePipeline)
                     viewModel.startRecord()
                 }
                 isRecording = !isRecording

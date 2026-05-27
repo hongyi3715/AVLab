@@ -7,13 +7,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import com.lq.video.camera.CameraController
-import com.lq.video.encode.VideoRecordPipeline
+import com.lq.video.pipeline.VideoEncoderPipeline
+import com.lq.video.pipeline.VideoRecordPipeline
 
 @Composable
 fun CameraPreview(
     modifier: Modifier = Modifier,
     controller: CameraController,
-    recordPipeline: VideoRecordPipeline
+    recordPipeline: VideoEncoderPipeline
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
