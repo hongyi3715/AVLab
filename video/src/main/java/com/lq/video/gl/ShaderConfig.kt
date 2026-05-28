@@ -55,32 +55,28 @@ class ShaderConfig {
     """.trimIndent()
 
     private val oesFragmentShader = """
-       #extension GL_OES_EGL_image_external : require
-precision mediump float;
+        #extension GL_OES_EGL_image_external : require
+        precision mediump float;
 
-varying vec2 vTexCoord;
-uniform samplerExternalOES uTexture;
+        varying vec2 vTexCoord;
+        uniform samplerExternalOES uTexture;
 
-void main() {
-    vec4 color = texture2D(uTexture, vTexCoord);
-
-    // 灰度计算（经典权重）
-    float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
-
-    gl_FragColor = vec4(vec3(gray), 1.0);
-}
+        void main() {
+            // 直接输出原始采样到的彩色颜色
+            gl_FragColor = texture2D(uTexture, vTexCoord);
+        }
     """.trimIndent()
 
     private val texture2DFragmentShader = """
-precision mediump float;
-varying vec2 vTexCoord;
-uniform sampler2D uTexture;
-void main() {
-    vec4 color = texture2D(uTexture, vTexCoord);
-    float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
-    gl_FragColor = vec4(vec3(gray), 1.0);
-}
-""".trimIndent()
+        precision mediump float;
+        varying vec2 vTexCoord;
+        uniform sampler2D uTexture;
+        
+        void main() {
+            // 直接输出原始采样到的彩色颜色
+            gl_FragColor = texture2D(uTexture, vTexCoord);
+        }
+    """.trimIndent()
 
     val texMatrix = FloatArray(16)
 

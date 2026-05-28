@@ -128,13 +128,22 @@ fun SelectIpScreen(
                             } else {
                                 ipText.trim()
                             }
-                            
-                            // 保存IP到历史记录
+
                             val prefs = context.getSharedPreferences("video_record", Context.MODE_PRIVATE)
-                            val saved = prefs.getStringSet("saved_ips", mutableSetOf()) ?: mutableSetOf()
-                            saved.add(fullHost)
-                            prefs.edit().putStringSet("saved_ips", saved).apply()
-                            
+
+                            val nextSaved = prefs
+                                .getStringSet("saved_ips", emptySet())
+                                .orEmpty()
+                                .toMutableSet()
+                                .apply {
+                                    add(fullHost)
+                                }
+
+                            prefs.edit()
+                                .putStringSet("saved_ips", nextSaved)
+                                .apply()
+
+                            savedIps = nextSaved.toList()
                             onIpSelected(fullHost)
                         }
                     }
@@ -212,10 +221,20 @@ fun SelectIpScreen(
                                 IconButton(
                                     onClick = {
                                         val prefs = context.getSharedPreferences("video_record", Context.MODE_PRIVATE)
-                                        val saved = prefs.getStringSet("saved_ips", mutableSetOf()) ?: mutableSetOf()
-                                        saved.remove(savedIp)
-                                        prefs.edit().putStringSet("saved_ips", saved).apply()
-                                        savedIps = saved.toList()
+
+                                        val nextSaved = prefs
+                                            .getStringSet("saved_ips", emptySet())
+                                            .orEmpty()
+                                            .toMutableSet()
+                                            .apply {
+                                                remove(savedIp)
+                                            }
+
+                                        prefs.edit()
+                                            .putStringSet("saved_ips", nextSaved)
+                                            .apply()
+
+                                        savedIps = nextSaved.toList()
                                     }
                                 ) {
                                     Icon(

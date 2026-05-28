@@ -15,7 +15,9 @@ object VideoUdpSocket {
     private const val receivePort = 1935
 
     private val sendSocket = DatagramSocket()  // 不需要绑定端口
-    private val receiveSocket = DatagramSocket(receivePort)  // 接收用
+    private val receiveSocket = DatagramSocket(receivePort).apply {
+        receiveBufferSize = 4 * 1024 * 1024
+    }  // 接收用
     @Volatile
     private var isRunning = true
 
@@ -41,7 +43,7 @@ object VideoUdpSocket {
                 while (isRunning) {
                     val packet = DatagramPacket(ByteArray(1500), 1500)
                     receiveSocket.receive(packet)
-                    println("收到原始UDP from=${packet.address.hostAddress}:${packet.port}, len=${packet.length}")
+//                    println("收到原始UDP from=${packet.address.hostAddress}:${packet.port}, len=${packet.length}")
 
                     val byteBuffer = ByteBuffer.wrap(packet.data, 0, packet.length)
                     val seq = byteBuffer.int
@@ -53,7 +55,7 @@ object VideoUdpSocket {
                     val videoData = ByteArray(packet.length - 28)
                     byteBuffer.get(videoData)
 
-                    println("解析UDP seq=$seq frameId=$frameId index=$packetIndex/$packageCount flags=$flags")
+//                    println("解析UDP seq=$seq frameId=$frameId index=$packetIndex/$packageCount flags=$flags")
 
                     val videoHeader = VideoPacketHeader(seq, ptsUs, frameId, packetIndex, packageCount, flags)
                     val videoPacket = VideoPacket(videoHeader, videoData)
