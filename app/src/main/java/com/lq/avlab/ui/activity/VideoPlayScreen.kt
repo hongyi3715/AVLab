@@ -34,6 +34,7 @@ fun VideoPlayScreen(
 
     LaunchedEffect(Unit) {
         printAllIPs()
+        viewModel.startAudioPlay()
     }
 
     Box(modifier = Modifier.fillMaxSize()) {

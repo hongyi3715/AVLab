@@ -144,13 +144,13 @@ class AacEncoder {
 
                     if(info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0){
                         csdData = data
-                        encoder.releaseOutputBuffer(index, false) //合成mp4时须释放
+//                        encoder.releaseOutputBuffer(index, false) //合成mp4时须释放
                         continue
                     }
 
                     if (info.size > 0) {
-//                        handleAacFlow(data,info,audioTrace)
-                        handleEventFlow(info,buffer)
+                        handleAacFlow(data,info,audioTrace)
+//                        handleEventFlow(info,buffer)
                     }
 
 

@@ -7,9 +7,12 @@ import com.lq.audio.data.AudioTrace
 import com.lq.audio.data.AudioEncodedFrame
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.consumeAsFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.nio.ByteBuffer
 
@@ -24,7 +27,12 @@ class AacDecoder {
         capacity = 10,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
-    val audioFlow = _audioFlow.consumeAsFlow()
+    val audioFlow = _audioFlow.receiveAsFlow()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val codecScope = CoroutineScope(
+        Dispatchers.IO.limitedParallelism(1) + SupervisorJob()
+    )
 
 
     // 输入 trace 队列，保证输出时对应正确
@@ -49,7 +57,7 @@ class AacDecoder {
         initDecode()
     }
 
-    private fun initDecode() = CoroutineScope(Dispatchers.IO).launch {
+    private fun initDecode() = codecScope.launch {
         val info = MediaCodec.BufferInfo()
         while (true) {
             val outputIndex = decoder.dequeueOutputBuffer(info, 10_000)

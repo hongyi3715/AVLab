@@ -6,7 +6,7 @@ import com.lq.audio.coder.AacDecoder
 import com.lq.audio.data.AudioPacket
 import com.lq.audio.data.AudioEncodedFrame
 import com.lq.audio.data.PollResult
-import com.lq.audio.net.UdpSocket
+import com.lq.audio.net.AudioUdpSocket
 import com.lq.audio.player.AudioTrackManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,13 +38,9 @@ class AudioPlayPipeline {
 
     //接收成功，存放进抖动缓存
     fun initReceiver(scope: CoroutineScope) {
-        UdpSocket.onPacketListener = object : UdpSocket.OnPacketListener {
-            override fun onPacket(audioPacket: AudioPacket) {
-                simulateQueue.trySend(audioPacket)
-            }
+        AudioUdpSocket.startReceiverAudioPacket{ audioPacket ->
+            simulateQueue.trySend(audioPacket)
         }
-
-        UdpSocket.startReceiverAudioPacket()
 
         scope.launch(Dispatchers.IO) {
 
@@ -60,7 +56,7 @@ class AudioPlayPipeline {
                 // 抖动（围绕 baseDelay）
                 val delayMs = baseDelay + Random.nextLong(-jitter, jitter)
 
-                delay(delayMs.coerceAtLeast(0))
+//                delay(delayMs.coerceAtLeast(0))
 
                 jitterBuffer.add(packet.also {
                     it.trace?.bufferInTime = SystemClock.elapsedRealtime()

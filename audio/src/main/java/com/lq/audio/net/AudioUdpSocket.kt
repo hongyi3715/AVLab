@@ -8,9 +8,9 @@ import java.net.DatagramSocket
 import java.net.InetAddress
 import java.nio.ByteBuffer
 
-object UdpSocket {
+object AudioUdpSocket {
 
-    private val host = "127.0.0.1"
+    var host = "127.0.0.1"
     private val port = 1937
     private val sendSocket = DatagramSocket()  // 不需要绑定端口
     private val receiveSocket = DatagramSocket(port)  // 接收用
@@ -18,24 +18,19 @@ object UdpSocket {
     @Volatile
     private var isRunning = true
 
-    interface OnPacketListener{
-        fun onPacket(audioPacket: AudioPacket)
-    }
-
-    var onPacketListener: OnPacketListener?=null
-
-
-
     fun sendAudioPacket(audioPacket: AudioPacket) {
         val buffer = ByteBuffer.allocate(4 + 8 + audioPacket.payload.size)
         buffer.putInt(audioPacket.seq)
         buffer.putLong(audioPacket.timestamp)
         buffer.put(audioPacket.payload)
+        val address = InetAddress.getByName(host)
+
         val packet = DatagramPacket(
-            buffer.array(), buffer.position(), InetAddress.getByName(host), port
+            buffer.array(), buffer.position(), address, port
         )
         audioPacket.trace?.sendTime = SystemClock.elapsedRealtime()
-        println("AudioSendTrace:${audioPacket.trace}")
+        println("发送AudioUDP -> ${address.hostAddress}:$port len=${audioPacket.trace}")
+
         try {
             sendSocket.send(packet)
         }catch (e: Exception){
@@ -44,7 +39,7 @@ object UdpSocket {
     }
 
 
-    fun startReceiverAudioPacket() {
+    fun startReceiverAudioPacket(callback:(AudioPacket)->Unit) {
         Thread {
             while (isRunning) {
                 val packet = DatagramPacket(ByteArray(1500), 1500)
@@ -55,7 +50,7 @@ object UdpSocket {
                 val aacData = ByteArray(packet.length - 12)
                 byteBuffer.get(aacData)
                 val audioPacket = AudioPacket(seq, timestamp, aacData, trace = AudioTrace(seq, receiveTime = SystemClock.elapsedRealtime()))
-                onPacketListener?.onPacket(audioPacket)
+                callback(audioPacket)
             }
         }.start()
     }
