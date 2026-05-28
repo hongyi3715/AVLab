@@ -112,24 +112,6 @@ fun SelectIpScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // 端口输入框
-            OutlinedTextField(
-                value = portText,
-                onValueChange = { portText = it },
-                label = { Text("端口") },
-                placeholder = { Text("1935") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                leadingIcon = {
-                    Icon(
-                        Icons.Default.Settings,
-                        contentDescription = "Port"
-                    )
-                }
-            )
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
             // 连接按钮
             Button(
                 onClick = {

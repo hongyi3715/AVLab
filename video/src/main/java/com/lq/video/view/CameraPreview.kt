@@ -8,7 +8,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import com.lq.video.camera.CameraController
 import com.lq.video.pipeline.VideoEncoderPipeline
-import com.lq.video.pipeline.VideoRecordPipeline
 
 @Composable
 fun CameraPreview(
@@ -22,7 +21,7 @@ fun CameraPreview(
     AndroidView(
         modifier = modifier,
         factory = {
-            MyTextureView(context).also { view ->
+            PreviewTextureView(context).also { view ->
                 Log.d("CameraX", "factory 创建 view")
                 controller.startPreview(view, lifecycleOwner,recordPipeline)
             }

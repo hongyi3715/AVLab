@@ -5,6 +5,7 @@ import com.lq.video.decode.VideoPacketHeader
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
+import java.net.SocketTimeoutException
 import java.nio.ByteBuffer
 
 object VideoUdpSocket {
@@ -58,6 +59,8 @@ object VideoUdpSocket {
                     val videoPacket = VideoPacket(videoHeader, videoData)
                     callback(videoPacket)
                 }
+            }catch (e: SocketTimeoutException) {
+                println("等待UDP中 port=$receivePort")
             } catch (t: Throwable) {
                 println("接收异常: ${t.message}")
                 t.printStackTrace()

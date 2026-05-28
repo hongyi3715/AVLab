@@ -23,7 +23,7 @@ class MainActivity : ComponentActivity() {
             AVLabTheme {
                 Scaffold(modifier = Modifier.Companion.fillMaxSize()) { innerPadding ->
                      VideoRecordNavigation() //采集发送端
-//                    VideoPlayScreen()
+//                    VideoPlayScreen() //播放端
                 }
             }
         }

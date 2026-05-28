@@ -45,14 +45,14 @@ class RTCPipeline : VideoBaseEncoderPipeline(){
             return
         }
 
-        if (frame.isKeyFrame) {
-            lastCodecConfig?.let { config -> //发送I帧前优先发送一次config数据
-                sendAsPackets(config,frame.flags,frame.ptsUs)
-            }
-            sendAsPackets(frame.data,frame.flags,frame.ptsUs)
-        }else{ //P帧 B帧不做特殊处理
-            sendAsPackets(frame.data,frame.flags,frame.ptsUs)
+        val payload = if (frame.isKeyFrame) {
+            lastCodecConfig?.let { config ->
+                config + frame.data
+            } ?: frame.data
+        } else {
+            frame.data
         }
+        sendAsPackets(payload, frame.flags, frame.ptsUs)
     }
 
     private  val MAX_PACKET_SIZE = 1200

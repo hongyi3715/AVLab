@@ -8,7 +8,7 @@ import androidx.camera.core.Preview
 import androidx.camera.core.SurfaceRequest
 import androidx.core.content.ContextCompat
 
-class MyTextureView(context: Context) : TextureView(context), Preview.SurfaceProvider,
+class PreviewTextureView(context: Context) : TextureView(context), Preview.SurfaceProvider,
     TextureView.SurfaceTextureListener {
 
     private var pendingRequest: SurfaceRequest? = null

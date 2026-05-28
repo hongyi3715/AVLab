@@ -23,6 +23,8 @@ class RecordViewModel @Inject constructor(): ViewModel(){
 
     val encodePipeline = rtcRepository.recordPipeline
 
+    val playPipeline = rtcRepository.playPipeline
+
 
 
     fun setHost(host:String){

@@ -1,5 +1,6 @@
 package com.lq.video.pipeline
 
+import android.view.Surface
 import com.lq.video.decode.FrameBuffer
 import com.lq.video.decode.H264Decoder
 import com.lq.video.decode.VideoPacket
@@ -13,8 +14,9 @@ class VideoPlayPipeline {
     private val decoder = H264Decoder()
     private val frameMap = mutableMapOf<Int, FrameBuffer>()
 
-    fun initDecodeLoop(scope: CoroutineScope){
-        decoder.start(scope)
+
+    fun startDecode(surface: Surface,width:Int,height:Int){
+        decoder.start(surface,width,height)
     }
 
     //接受到服务端给的视频数据
@@ -35,11 +37,6 @@ class VideoPlayPipeline {
         }
     }
 
-    fun initDecoderReceiver(scope: CoroutineScope)=scope.launch(Dispatchers.IO) {
-        decoder.dataFlow.collect { //解码成功，交给gl绘制
-            println("DecoderReceiver Buffer :$it")
-        }
-    }
 
     fun stop(){
         VideoUdpSocket.stopReceivePacket()

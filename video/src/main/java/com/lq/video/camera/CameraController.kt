@@ -13,7 +13,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.lq.video.gl.DefaultGlRenderer
 import com.lq.video.gl.GLRenderer
 import com.lq.video.pipeline.VideoEncoderPipeline
-import com.lq.video.view.MyTextureView
+import com.lq.video.view.PreviewTextureView
 import java.util.concurrent.Executor
 import kotlinx.coroutines.launch
 
@@ -27,12 +27,12 @@ class CameraController(private val context: Context) {
 
     private var cameraProvider: ProcessCameraProvider? = null
 
-    private var textureView: MyTextureView? = null
+    private var textureView: PreviewTextureView? = null
 
 
     val glRenderer: GLRenderer = DefaultGlRenderer()
 
-    fun startPreview(textureView: MyTextureView, lifecycleOwner: LifecycleOwner,encodePipeline: VideoEncoderPipeline) = withException {
+    fun startPreview(textureView: PreviewTextureView, lifecycleOwner: LifecycleOwner, encodePipeline: VideoEncoderPipeline) = withException {
         this.textureView = textureView
 
         cameraProviderFuture.addListener({

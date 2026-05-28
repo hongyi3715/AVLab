@@ -12,9 +12,7 @@ class RTCRepository {
 
 
     fun initReceiver(scope: CoroutineScope){
-        playPipeline.initDecodeLoop(scope)
         playPipeline.initNetReceiver(scope)
-        playPipeline.initDecoderReceiver(scope)
     }
 
     fun startRecord(scope: CoroutineScope){
