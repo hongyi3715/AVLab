@@ -1,18 +1,20 @@
 package com.lq.audio.record
 
 import android.media.AudioRecord
-import android.os.SystemClock
-import com.lq.audio.buffer.BlockingRingBuffer
-import com.lq.audio.data.AudioTrace
+import android.media.AudioTimestamp
+import com.lq.audio.buffer.AudioRingBuffer
 import com.lq.audio.data.AudioFrame
-import kotlin.coroutines.cancellation.CancellationException
+import com.lq.audio.data.AudioTrace
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -22,10 +24,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.delay
 import java.util.concurrent.Executors
+import kotlin.coroutines.cancellation.CancellationException
 
 object AudioRecordManager {
     private val _recordStateFlow = MutableStateFlow<RecordState>(RecordState.Idle)
@@ -38,9 +38,9 @@ object AudioRecordManager {
      * DROP_OLDEST 丢弃旧数据,适用于实时处理
      */
     private val _audioFlow = MutableSharedFlow<AudioFrame>(
-            extraBufferCapacity = 16,
-            onBufferOverflow = BufferOverflow.DROP_OLDEST
-        )
+        extraBufferCapacity = 16,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
 
     val audioFlow = _audioFlow.asSharedFlow()
 
@@ -61,7 +61,7 @@ object AudioRecordManager {
 
     private var job: Job? = null
 
-    private val audioBuffer by lazy { BlockingRingBuffer(1024) }
+    private val audioBuffer by lazy { AudioRingBuffer(config.frameSize) }
 
     private var recordJob: Job? = null
 
@@ -74,19 +74,15 @@ object AudioRecordManager {
         return if (recordJob != null && !recordJob!!.isCancelled && !recordJob!!.isCompleted) recordJob!!
         else
             coroutineScope.launch(Dispatchers.IO, start = CoroutineStart.LAZY) {
-                val readBuffer = ByteArray(config.bufferSize)
                 while (isActive) {
-                   if(_recordStateFlow.value is RecordState.Recording){
-                       val audioSize = audioBuffer.read(readBuffer)
-                       if (audioSize > 0) _audioFlow.tryEmit(
-                           AudioFrame(
-                               readBuffer.copyOf(audioSize),
-                               AudioTrace(recordTime = SystemClock.elapsedRealtime())
-                           )
-                       )
-                   }else{
-                       delay(60)
-                   }
+                    if (_recordStateFlow.value is RecordState.Recording) {
+                        val audioFrame = audioBuffer.read()
+                        if (audioFrame.data.isNotEmpty()) _audioFlow.tryEmit(audioFrame)
+                        //todo 归还数据不太合理,考虑不增加池化
+                        //audioBuffer.returnBuffer(audioFrame.data)
+                    } else {
+                        delay(60)
+                    }
                 }
             }
     }
@@ -103,13 +99,19 @@ object AudioRecordManager {
 
             record.startRecording()
             _recordStateFlow.value = RecordState.Recording
-            val readBuffer = ByteArray(config.bufferSize)
             job = coroutineScope.launch(Dispatchers.IO) {
                 try {
                     while (isActive && _recordStateFlow.value == RecordState.Recording) {
+                        val readBuffer = audioBuffer.borrowBuffer()
+
                         val size = record.read(readBuffer, 0, readBuffer.size)
-                        if (size > 0) audioBuffer.write(readBuffer, 0, size)
-                        else _recordStateFlow.value = RecordState.Error(code = size)
+                        if (size > 0) {
+                            val audioFrame = AudioFrame(readBuffer, 0, AudioTrace(recordTime = getAudioRecordTime()))
+                            audioBuffer.write(audioFrame)
+                        } else {
+                            audioBuffer.returnBuffer(readBuffer)
+                            _recordStateFlow.value = RecordState.Error(code = size)
+                        }
                     }
                 } catch (e: Exception) {
                     if (e !is CancellationException) {
@@ -156,6 +158,19 @@ object AudioRecordManager {
             recordJob?.cancel()
             recordJob = null
         }
+
+
+    /*
+    * AudioTimestamp.TIMEBASE_BOOTTIME 系统启动到捕获音频的经过时间（含休眠）
+    * AudioTimestamp.TIMEBASE_MONOTONIC	系统运行时间（不含休眠）
+    * elapsedRealtime 含休眠时间
+    * nanoTime 不含休眠时间
+    * */
+    private fun getAudioRecordTime(): Long {
+        val audioTimeStamp = AudioTimestamp()
+        audioRecord?.getTimestamp(audioTimeStamp, AudioTimestamp.TIMEBASE_BOOTTIME)
+        return audioTimeStamp.nanoTime
+    }
 
     private val recordCoroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
         if (throwable is Exception) {

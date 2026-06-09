@@ -90,7 +90,7 @@ class AacEncoder {
 
         while (pcmBuffer.readFrame(frame)) {
             val trace = pcm.trace?.copy()
-            encodeFrame(AudioFrame(frame,trace ))
+            encodeFrame(AudioFrame(frame,pcm.ptsUs,trace))
         }
     }
 

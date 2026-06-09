@@ -45,6 +45,7 @@ android {
 dependencies {
     implementation(project(":audio"))
     implementation(project(":video"))
+    implementation(project(":common"))
 
     implementation(libs.hrouter.core)
     ksp(libs.hrouter.compiler)

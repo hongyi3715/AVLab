@@ -11,9 +11,6 @@ class RTCRepository {
     val playPipeline = VideoPlayPipeline()
 
 
-    fun initReceiver(scope: CoroutineScope){
-        playPipeline.initNetReceiver(scope)
-    }
 
     fun startRecord(scope: CoroutineScope){
         recordPipeline.startSend(scope) //编码成功后发送

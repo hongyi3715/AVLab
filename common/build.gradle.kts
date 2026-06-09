@@ -1,12 +1,10 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.ktlint)
-    alias(libs.plugins.detekt)
 }
 
 android {
-    namespace = "com.lq.audio"
+    namespace = "com.lq.common"
     compileSdk {
         version = release(36)
     }
@@ -23,7 +21,7 @@ android {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro",
+                "proguard-rules.pro"
             )
         }
     }
@@ -37,8 +35,6 @@ android {
 }
 
 dependencies {
-    implementation(project(":common"))
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)

@@ -18,6 +18,7 @@ object AudioUdpSocket {
     @Volatile
     private var isRunning = true
 
+    //todo send Trace
     fun sendAudioPacket(audioPacket: AudioPacket) {
         val buffer = ByteBuffer.allocate(4 + 8 + audioPacket.payload.size)
         buffer.putInt(audioPacket.seq)
@@ -39,6 +40,7 @@ object AudioUdpSocket {
     }
 
 
+    //todo receive Trace
     fun startReceiverAudioPacket(callback:(AudioPacket)->Unit) {
         Thread {
             while (isRunning) {

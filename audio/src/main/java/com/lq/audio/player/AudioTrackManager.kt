@@ -1,7 +1,10 @@
 package com.lq.audio.player
 
+import android.media.AudioTimestamp
 import android.media.AudioTrack
+import android.os.SystemClock
 import com.lq.audio.player.PlayState
+import com.lq.common.MediaClock
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -10,9 +13,9 @@ import kotlinx.coroutines.sync.withLock
 import java.lang.Exception
 import kotlin.coroutines.cancellation.CancellationException
 
-class AudioTrackManager {
+class AudioTrackManager : MediaClock{
     private val config: AudioTrackConfig = AudioTrackConfig()
-    private var audioTrack: AudioTrack? = null
+     var audioTrack: AudioTrack? = null
     private val mutex = Mutex()
     private val _stateFlow = MutableStateFlow<PlayState>(PlayState.Idle)
 
@@ -76,12 +79,11 @@ class AudioTrackManager {
     /*获取时钟时间*/
     fun getAudioClockUs(): Long? {
         val track = audioTrack ?: return null
-        val timestamp = android.media.AudioTimestamp()
-        return if (track.getTimestamp(timestamp)) {
-            timestamp.framePosition * 1_000_000L / 44100L
-        } else {
-            null
-        }
+        return track.playbackHeadPosition * 1_000_000L / config.sampleRate
+    }
+
+    override fun audioPlayCurrentPts(): Long? {
+        return getAudioClockUs()
     }
 
 }

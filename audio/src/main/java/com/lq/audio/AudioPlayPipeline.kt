@@ -17,7 +17,7 @@ import kotlin.random.Random
 
 class AudioPlayPipeline {
 
-    private val audioTrackManager = AudioTrackManager()
+     val audioTrackManager = AudioTrackManager()
 
     val playState = audioTrackManager.stateFlow
 
@@ -36,6 +36,7 @@ class AudioPlayPipeline {
     suspend fun reset() = audioTrackManager.reset()
 
 
+
     //接收成功，存放进抖动缓存
     fun initReceiver(scope: CoroutineScope) {
         AudioUdpSocket.startReceiverAudioPacket{ audioPacket ->
@@ -51,7 +52,7 @@ class AudioPlayPipeline {
             for (packet in simulateQueue) {
 
                 // 丢包
-                if (Random.nextFloat() < lossRate) continue
+//                if (Random.nextFloat() < lossRate) continue
 
                 // 抖动（围绕 baseDelay）
                 val delayMs = baseDelay + Random.nextLong(-jitter, jitter)
@@ -65,7 +66,10 @@ class AudioPlayPipeline {
         }
     }
 
-    //持续拿抖动缓存区，进行解码
+    /*
+    * 持续拿抖动缓存区，进行解码
+    * 解码后直接播放，rtc中音频不等待直接播
+    * */
     fun initJitterBuffer(scope: CoroutineScope) = scope.launch(Dispatchers.IO) {
         val frameDuration = 10L
         while (jitterBuffer.size < 5) {

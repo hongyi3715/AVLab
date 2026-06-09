@@ -43,7 +43,8 @@ fun VideoPlayScreen(
                 .fillMaxWidth()
                 .fillMaxHeight(),
             controller = controller,
-            pipeline = viewModel.playPipeline
+            pipeline = viewModel.playPipeline,
+            clock = viewModel.clock
         )
     }
 }

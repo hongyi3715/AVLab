@@ -19,6 +19,8 @@ class RecordViewModel @Inject constructor(): ViewModel(){
 
     val audioPlayer = AudioPlayPipeline()
 
+    val clock = audioPlayer.audioTrackManager
+
     val rtcRepository = RTCRepository()
 
     val encodePipeline = rtcRepository.recordPipeline

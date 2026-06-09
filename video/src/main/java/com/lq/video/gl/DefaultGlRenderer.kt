@@ -178,11 +178,8 @@ class DefaultGlRenderer : GLRenderer {
             shaderConfig.drawShader(textureHandler!!, shaderConfig.identityMatrix)
         }
 
-        val now = st.timestamp
-        if (baseNs < 0) baseNs = now
-        val pts = now - baseNs
 
-        eglSurfaceManager.presentationTime(pts)
+        eglSurfaceManager.presentationTime(st.timestamp)
         eglSurfaceManager.swapEncoder()
     }
 
