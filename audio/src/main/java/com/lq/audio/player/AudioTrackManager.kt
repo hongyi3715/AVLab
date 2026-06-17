@@ -77,13 +77,13 @@ class AudioTrackManager : MediaClock{
     }
 
     /*获取时钟时间*/
-    fun getAudioClockUs(): Long? {
+    private fun getAudioPlaybackTimeUs(): Long? {
         val track = audioTrack ?: return null
         return track.playbackHeadPosition * 1_000_000L / config.sampleRate
     }
 
     override fun audioPlayCurrentPts(): Long? {
-        return getAudioClockUs()
+        return getAudioPlaybackTimeUs()
     }
 
 }

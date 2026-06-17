@@ -90,24 +90,6 @@ class Camera264Encoder {
         }.also { it.start() }
     }
 
-    //todo new+copy所带来的性能消耗
-    private fun handleEncoderData(bufferInfo: MediaCodec.BufferInfo,outputBuffer: ByteBuffer,outputIndex:Int,currentCodec: MediaCodec){
-        try {
-            val bufferCopy = ByteBuffer.allocate(bufferInfo.size)
-            outputBuffer.position(bufferInfo.offset)
-            outputBuffer.limit(bufferInfo.offset + bufferInfo.size)
-            bufferCopy.put(outputBuffer)
-            bufferCopy.flip()
-
-            val newInfo = MediaCodec.BufferInfo().apply {
-                set(0, bufferInfo.size, bufferInfo.presentationTimeUs, bufferInfo.flags)
-            }
-            _eventFlow.tryEmit(EncoderEvent.Data(bufferCopy,newInfo))
-            currentCodec.releaseOutputBuffer(outputIndex, false)
-        }catch (e: Exception){
-            _stateFlow.value = EncoderState.ERROR(e)
-        }
-    }
 
     private fun handleRTCEncoderData(bufferInfo: MediaCodec.BufferInfo,outputBuffer: ByteBuffer,outputIndex:Int,currentCodec: MediaCodec){
         try {
@@ -122,7 +104,7 @@ class Camera264Encoder {
                 ptsUs = bufferInfo.presentationTimeUs,
                 flags = bufferInfo.flags
             )
-
+            println("当前视频编码:$frame")
             _eventFlow.tryEmit(EncoderEvent.VideoFrame(frame))
             currentCodec.releaseOutputBuffer(outputIndex, false)
         } catch (e: Exception) {

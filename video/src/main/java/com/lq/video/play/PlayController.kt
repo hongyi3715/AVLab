@@ -23,7 +23,7 @@ class PlayController(context: Context) {
                 println("play surface=$surface width=$width height=$height")
                 lifecycleOwner.lifecycleScope.launch{
                     val decodeSurface = glRender.start(surface, Size(width, height))
-                    pipeline.startDecode(decodeSurface,width,height)
+                    pipeline.startDecode(lifecycleOwner.lifecycleScope,clock,surface= decodeSurface,width,height)
                     pipeline.initBufferListener(lifecycleOwner.lifecycleScope,clock)
                     pipeline.initNetReceiver(lifecycleOwner.lifecycleScope)
                 }

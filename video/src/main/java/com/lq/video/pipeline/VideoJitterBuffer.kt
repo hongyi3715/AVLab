@@ -1,14 +1,11 @@
 package com.lq.video.pipeline
 
-import com.lq.common.MediaClock
-import com.lq.common.clock.AvClock
 import com.lq.video.decode.FrameBuffer
 import com.lq.video.decode.VideoPacket
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 
@@ -26,53 +23,18 @@ class VideoJitterBuffer {
     var totalFrames = 0
     var droppedFrames = 0
 
-
-    private val VIDEO_DECODE_RENDER_LEAD_US = 30_000L
-    private val VIDEO_EARLY_THRESHOLD_US = 50_000L
-    private val VIDEO_LATE_THRESHOLD_US = 100_000L
-
     private val packetChannel = Channel<DecodePacket>(16)
 
     private var job: Job? = null
 
     fun initListener(
         scope: CoroutineScope,
-        audioClock: MediaClock,
-        decode: (DecodePacket) -> Unit
+        decode:suspend (DecodePacket) -> Unit
     ) {
         stop()
         job = scope.launch(Dispatchers.IO) {
             for (packet in packetChannel) {
-                handleJitterPacket(packet, audioClock, decode)
-            }
-        }
-    }
-
-    private suspend fun handleJitterPacket(
-        packet: DecodePacket,
-        audioClock: MediaClock,
-        decode: (DecodePacket) -> Unit
-    ) {
-        val audioPtsUs = audioClock.audioPlayCurrentPts()
-        val diffUs = if (audioPtsUs != null) {
-            val targetAudioPtsUs = audioPtsUs + VIDEO_DECODE_RENDER_LEAD_US
-            packet.pts - targetAudioPtsUs
-        } else { //没有获取到AudioTrack的当前播放时间，默认为0
-            0
-        }
-        when {
-            diffUs > VIDEO_EARLY_THRESHOLD_US -> {
-                delay(minOf(5, diffUs / 1000)) // 视频还早，先不送解码
-            }
-
-            diffUs < -VIDEO_LATE_THRESHOLD_US -> {
-                println("视频帧过期，丢弃 video=${packet.pts} audio=$audioPtsUs diff=$diffUs")
-                return
-            }
-
-            else -> {
-                decode(packet) //去解码
-                return
+                decode(packet)
             }
         }
     }
@@ -109,8 +71,7 @@ class VideoJitterBuffer {
             //清除过时的数据
             frameMap.entries.removeIf { it.key < frameId - 30 }
             if (canDecode) {
-                val result =
-                    packetChannel.trySend(DecodePacket(fullFrame, packet.header.timestampUs))
+                val result = packetChannel.trySend(DecodePacket(fullFrame, packet.header.timestampUs))
                 if (result.isFailure) {
                     println("JitterBuffer Channel满，丢帧 frame=$frameId")
                 }
@@ -142,7 +103,7 @@ class VideoJitterBuffer {
 
     fun stop() {
         job?.cancel()
-        packetChannel.close()
+//        packetChannel.close()
     }
 
     data class DecodePacket(

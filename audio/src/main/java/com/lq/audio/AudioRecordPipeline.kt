@@ -24,7 +24,6 @@ class AudioRecordPipeline {
     //录音的音频去编码
      fun initRecordFlow(scope: CoroutineScope)= scope.launch(Dispatchers.IO){
         audioRecordManager.audioFlow.collect { pcm->
-            println("AudioRecordTrace:${pcm.trace}")
             encode(pcm)
         }
     }

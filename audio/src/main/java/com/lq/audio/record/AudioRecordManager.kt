@@ -106,7 +106,8 @@ object AudioRecordManager {
 
                         val size = record.read(readBuffer, 0, readBuffer.size)
                         if (size > 0) {
-                            val audioFrame = AudioFrame(readBuffer, 0, AudioTrace(recordTime = getAudioRecordTime()))
+                            val pts = getAudioRecordTime()
+                            val audioFrame = AudioFrame(data = readBuffer, ptsUs = pts, trace = AudioTrace(recordTime = pts))
                             audioBuffer.write(audioFrame)
                         } else {
                             audioBuffer.returnBuffer(readBuffer)
@@ -166,10 +167,10 @@ object AudioRecordManager {
     * elapsedRealtime 含休眠时间
     * nanoTime 不含休眠时间
     * */
+    private val reusableAudioTimestamp = AudioTimestamp()
     private fun getAudioRecordTime(): Long {
-        val audioTimeStamp = AudioTimestamp()
-        audioRecord?.getTimestamp(audioTimeStamp, AudioTimestamp.TIMEBASE_BOOTTIME)
-        return audioTimeStamp.nanoTime
+        audioRecord?.getTimestamp(reusableAudioTimestamp, AudioTimestamp.TIMEBASE_MONOTONIC)
+        return reusableAudioTimestamp.framePosition * 1_000_000 / config.sampleRate
     }
 
     private val recordCoroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->

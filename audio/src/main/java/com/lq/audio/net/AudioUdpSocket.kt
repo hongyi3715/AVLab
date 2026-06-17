@@ -18,11 +18,13 @@ object AudioUdpSocket {
     @Volatile
     private var isRunning = true
 
+    private var baseTime = 0L
+
     //todo send Trace
     fun sendAudioPacket(audioPacket: AudioPacket) {
         val buffer = ByteBuffer.allocate(4 + 8 + audioPacket.payload.size)
         buffer.putInt(audioPacket.seq)
-        buffer.putLong(audioPacket.timestamp)
+        buffer.putLong(createTimeZoom(audioPacket))
         buffer.put(audioPacket.payload)
         val address = InetAddress.getByName(host)
 
@@ -30,7 +32,6 @@ object AudioUdpSocket {
             buffer.array(), buffer.position(), address, port
         )
         audioPacket.trace?.sendTime = SystemClock.elapsedRealtime()
-        println("发送AudioUDP -> ${address.hostAddress}:$port len=${audioPacket.trace}")
 
         try {
             sendSocket.send(packet)
@@ -39,21 +40,38 @@ object AudioUdpSocket {
         }
     }
 
+    private fun createTimeZoom(audioPacket: AudioPacket): Long{
+        val copiedBaseTime = baseTime
+        val timeStampUs = audioPacket.timestamp
+        if(copiedBaseTime == 0L ){
+            baseTime = timeStampUs
+            return 0
+        }
+        return timeStampUs - copiedBaseTime
+    }
+
 
     //todo receive Trace
     fun startReceiverAudioPacket(callback:(AudioPacket)->Unit) {
+        println("准备接收音频")
         Thread {
-            while (isRunning) {
-                val packet = DatagramPacket(ByteArray(1500), 1500)
-                receiveSocket.receive(packet)
-                val byteBuffer = ByteBuffer.wrap(packet.data, 0, packet.length)
-                val seq = byteBuffer.int
-                val timestamp = byteBuffer.long
-                val aacData = ByteArray(packet.length - 12)
-                byteBuffer.get(aacData)
-                val audioPacket = AudioPacket(seq, timestamp, aacData, trace = AudioTrace(seq, receiveTime = SystemClock.elapsedRealtime()))
-                callback(audioPacket)
+            try {
+                println("监听音频 receivePort=$port, thread=${Thread.currentThread().name}")
+                while (isRunning) {
+                    val packet = DatagramPacket(ByteArray(1500), 1500)
+                    receiveSocket.receive(packet)
+                    val byteBuffer = ByteBuffer.wrap(packet.data, 0, packet.length)
+                    val seq = byteBuffer.int
+                    val timestamp = byteBuffer.long
+                    val aacData = ByteArray(packet.length - 12)
+                    byteBuffer.get(aacData)
+                    val audioPacket = AudioPacket(seq, timestamp, aacData, trace = AudioTrace(seq, receiveTime = SystemClock.elapsedRealtime()))
+                    callback(audioPacket)
+                }
+            }catch (e: Exception){
+                e.printStackTrace()
             }
+
         }.start()
     }
 

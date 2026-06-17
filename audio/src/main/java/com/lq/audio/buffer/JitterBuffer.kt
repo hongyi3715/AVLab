@@ -15,7 +15,7 @@ class JitterBuffer {
 
     private val buffer = TreeMap<Int, AudioPacket>()
 
-    private var expectedSeq = 1
+    private var expectedSeq = -1  // -1 表示未初始化
 
     private val maxBufferSize = 200 //最大缓冲数量
 
@@ -23,15 +23,16 @@ class JitterBuffer {
 
     private var missingStartTime = 0L
 
-    private val frameDurationMs = 1024L * 1000 / 44100 // 23ms
-
-    private val missTimeoutMs =  40  // 约33ms
+    @Volatile var dynamicMissTimeoutMs = 40L
 
     private val maxJump = 4
 
     @Synchronized
     fun add(packet: AudioPacket) {
         clearExpiredPackets() //超过最大超时时间需要清理
+        if (expectedSeq == -1) {
+            expectedSeq = packet.seq
+        }
         if (packet.seq < expectedSeq) return //过老的packet，丢弃
         if (buffer.size >= maxBufferSize) { //超过最大缓存限制，优先舍弃最老的packet
             val oldestSeq = buffer.firstKey()
@@ -45,34 +46,7 @@ class JitterBuffer {
         buffer[packet.seq] = packet
     }
 
-    @Synchronized
-    fun poll(): AudioPacket? {
-        buffer.remove(expectedSeq)?.let {
-            expectedSeq++
-            missingStartTime = 0L
-            return it
-        }
 
-        if (missingStartTime == 0L) {
-            missingStartTime = System.currentTimeMillis()
-            return null
-        }
-
-        if (System.currentTimeMillis() - missingStartTime >= missTimeoutMs) {
-            println("等待时长超过,跳过当前帧")
-            expectedSeq++
-            missingStartTime = 0L
-        }
-        return null //跳过，播放静音帧
-    }
-
-    /*
-    * 1 2 3 4 5
-    *
-    * 1 3  2  5    4
-    *
-    * 1
-    * */
     @Synchronized
     fun pollFirst(): PollResult {
 
@@ -112,7 +86,7 @@ class JitterBuffer {
         }
 
         // 还没等够，不补静音
-        if (now - missingStartTime < missTimeoutMs) {
+        if (now - missingStartTime < dynamicMissTimeoutMs) {
             return PollResult.Wait
         }
 
@@ -123,16 +97,15 @@ class JitterBuffer {
     }
 
     private fun clearExpiredPackets() {
-        try {
-            val now = System.currentTimeMillis()
-            val expired = buffer.filter {
-                now - it.value.trace!!.receiveTime >= maxExpiredTime && it.key < expectedSeq
+        val now = System.currentTimeMillis()
+        while (buffer.isNotEmpty()) {
+            val firstKey = buffer.firstKey()
+            val packet = buffer[firstKey]
+            if (packet != null && now - packet.trace!!.receiveTime >= maxExpiredTime && firstKey < expectedSeq) {
+                buffer.remove(firstKey)
+            } else {
+                break // 因为是有序的，第一个没过期，后面的更不可能过期
             }
-            expired.forEach { (i, _) ->
-                buffer.remove(i)
-            }
-        }catch (e: Exception){
-            e.printStackTrace()
         }
     }
 

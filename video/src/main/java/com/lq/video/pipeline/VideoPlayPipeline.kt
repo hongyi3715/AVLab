@@ -14,13 +14,13 @@ class VideoPlayPipeline {
 
     private val jitterBuffer: VideoJitterBuffer = VideoJitterBuffer()
 
-    fun startDecode(surface: Surface,width:Int,height:Int){
-        decoder.start(surface,width,height)
+    fun startDecode(scope: CoroutineScope, clock: MediaClock, surface: Surface, width: Int, height: Int) {
+        decoder.start(surface, width, height, scope, clock)
     }
 
-    fun initBufferListener(scope: CoroutineScope,clock: MediaClock){
-        jitterBuffer.initListener(scope,clock){packet->
-            decoder.decode(packet.bytes,packet.pts)
+    fun initBufferListener(scope: CoroutineScope, clock: MediaClock) {
+        jitterBuffer.initListener(scope) { packet ->
+            decoder.decode(packet.bytes, packet.pts)
         }
     }
 

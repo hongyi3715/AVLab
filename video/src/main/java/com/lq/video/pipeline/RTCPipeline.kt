@@ -1,6 +1,8 @@
 package com.lq.video.pipeline
 
 import com.lq.video.decode.EncodedVideoFrame
+import com.lq.video.decode.VideoPacket
+import com.lq.video.decode.VideoPacketHeader
 import com.lq.video.encode.EncoderEvent
 import com.lq.video.net.VideoUdpSocket
 import kotlinx.coroutines.CoroutineScope
@@ -19,6 +21,7 @@ class RTCPipeline : VideoBaseEncoderPipeline(){
             eventFlow.collect {
                 when (it) {
                     is EncoderEvent.VideoFrame -> {
+                        println("当前视频帧:${it.frame}")
                         handleVideoFrame(it.frame)
                     }
 
@@ -90,21 +93,8 @@ class RTCPipeline : VideoBaseEncoderPipeline(){
         packetCount: Int
     ) {
         val seq = nextVideoSeq()
-
-        val buffer = ByteBuffer.allocate(
-            4 + 4 + 4 + 4 + 8 + 4 + data.size
-        )
-
-        buffer.putInt(seq)
-        buffer.putInt(frameId)
-        buffer.putInt(packetIndex)
-        buffer.putInt(packetCount)
-        buffer.putLong(ptsUs)
-        buffer.putInt(flags)
-        buffer.put(data)
-
-        val packetBytes = buffer.array()
-        VideoUdpSocket.sendVideoPacket(packetBytes)
+        val videoPacket = VideoPacket(VideoPacketHeader(seq, ptsUs, frameId, packetIndex, packetCount, flags), payload = data)
+        VideoUdpSocket.sendVideoPacket(videoPacket)
     }
 
 

@@ -43,15 +43,13 @@ class AacEncoder {
     )
     val audioEncodeEventFlow = _audioEncodeEventFlow.asSharedFlow()
 
-    private var pts = 0L
-    private val frameDurationUs = 1024_000_000L / sampleRate
-
     private var currentSequence = 0
 
     // 可选：给 decoder 用
     var csdData: ByteArray? = null
         private set
 
+    //todo 后续自适应码率
     init {
         val format = MediaFormat.createAudioFormat(
             MediaFormat.MIMETYPE_AUDIO_AAC,
@@ -90,7 +88,7 @@ class AacEncoder {
 
         while (pcmBuffer.readFrame(frame)) {
             val trace = pcm.trace?.copy()
-            encodeFrame(AudioFrame(frame,pcm.ptsUs,trace))
+            encodeFrame(AudioFrame(data = frame,ptsUs = pcm.ptsUs,trace = trace))
         }
     }
 
@@ -102,18 +100,15 @@ class AacEncoder {
         val inputBuffer = encoder.getInputBuffer(inputIndex)!!
         inputBuffer.clear()
         inputBuffer.put(frame.data)
-
         encoder.queueInputBuffer(
             inputIndex,
             0,
             frame.data.size,
-            pts,
+            frame.ptsUs,
             0
         )
 
         drain(frame.trace)
-        pts += frameDurationUs
-
     }
 
     private fun drain(audioTrace: AudioTrace?) {

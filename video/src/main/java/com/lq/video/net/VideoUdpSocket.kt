@@ -21,18 +21,37 @@ object VideoUdpSocket {
     @Volatile
     private var isRunning = true
 
-    fun sendVideoPacket(packet: ByteArray) {
+    fun sendVideoPacket(packet: VideoPacket){
+        val buffer = ByteBuffer.allocate(
+            4 + 4 + 4 + 4 + 8 + 4 + packet.payload.size
+        )
+        buffer.putInt(packet.header.seq)
+        buffer.putInt(packet.header.frameId)
+        buffer.putInt(packet.header.fragIndex)
+        buffer.putInt(packet.header.fragCount)
+        buffer.putLong(createTimeZoom(packet.header))
+        buffer.putInt(packet.header.flags)
+        buffer.put(packet.payload)
+        val packetBytes = buffer.array()
         try {
             val address = InetAddress.getByName(host)
-            val sendPacket = DatagramPacket(packet, packet.size, address, sendPort)
-            println("发送UDP -> ${address.hostAddress}:$sendPort len=${packet.size}")
+            val sendPacket = DatagramPacket(packetBytes, packetBytes.size, address, sendPort)
             sendSocket.send(sendPacket)
         } catch (t: Throwable) {
-            println("发送异常: ${t.message}")
             t.printStackTrace()
         }
     }
 
+    private var baseTime = 0L
+    private fun createTimeZoom(packetHeader: VideoPacketHeader): Long{
+        val copiedBaseTime = baseTime
+        val timeStampUs = packetHeader.timestampUs
+        if(copiedBaseTime == 0L ){
+            baseTime = timeStampUs
+            return 0
+        }
+        return timeStampUs - copiedBaseTime
+    }
 
     fun startReceivePacket(callback:(VideoPacket)-> Unit){
         isRunning = true
