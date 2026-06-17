@@ -27,13 +27,13 @@ class AudioPlayPipeline {
 
     private val bufferChannel = Channel<AudioPacket>(capacity = 16,onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
-    suspend fun setBytesData(byteArray: ByteArray) = audioTrackManager.setBytesData(byteArray)
+     fun setBytesData(byteArray: ByteArray) = audioTrackManager.setBytesData(byteArray)
 
-    suspend fun play() = audioTrackManager.play()
+     fun play() = audioTrackManager.play()
 
-    suspend fun stop() = audioTrackManager.stop()
+     fun stop() = audioTrackManager.stop()
 
-    suspend fun reset() = audioTrackManager.reset()
+     fun reset() = audioTrackManager.reset()
 
 
     private val audioBridge = AudioJniBridge()
@@ -74,7 +74,13 @@ class AudioPlayPipeline {
             if (predictedOffsetMs > 0) {
                 jitterBuffer.dynamicMissTimeoutMs = coerceJitterTimeout(predictedOffsetMs)
             }
-
+/*            println(
+                "size=${jitterBuffer.size} " +
+                        "expected=${jitterBuffer.expectedSeqForDebug()} " +
+                        "first=${jitterBuffer.peekFirst()?.seq} " +
+                        "last=${jitterBuffer.peekLast()?.seq} " +
+                        "dynamic=${jitterBuffer.dynamicMissTimeoutMs}"
+            )*/
             when (val result = jitterBuffer.pollFirst()) {
 
                 is PollResult.Packet -> {
@@ -84,7 +90,7 @@ class AudioPlayPipeline {
 
                 PollResult.Lost -> {
                     println("等待空音频，填充静音帧")
-//                    setBytesData(ByteArray(4096))
+                    setBytesData(ByteArray(4096))
                     delay(frameDurationMs)
                 }
 

@@ -9,11 +9,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 
 
-/*
-* todo 1.丢i帧重传
-*  2.p帧丢失等待下一个i帧传输后再解码
-*  3.根据音频时间判断该帧是否应该丢失或等待
-* */
+
 class VideoJitterBuffer {
 
     private val frameMap = mutableMapOf<Int, FrameBuffer>()

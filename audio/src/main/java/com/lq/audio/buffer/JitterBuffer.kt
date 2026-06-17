@@ -17,7 +17,7 @@ class JitterBuffer {
 
     private var expectedSeq = -1  // -1 表示未初始化
 
-    private val maxBufferSize = 200 //最大缓冲数量
+    private val maxBufferSize = 2 //最大缓冲数量
 
     private val maxExpiredTime = 3000 //罪大超时时间
 
@@ -25,7 +25,7 @@ class JitterBuffer {
 
     @Volatile var dynamicMissTimeoutMs = 40L
 
-    private val maxJump = 4
+    private val maxJump = 2
 
     @Synchronized
     fun add(packet: AudioPacket) {
@@ -114,6 +114,8 @@ class JitterBuffer {
 
     @Synchronized
     fun peekLast(): AudioPacket? = buffer.lastEntry()?.value
+
+    fun expectedSeqForDebug() = expectedSeq
 
     val size get() = buffer.size
 }
