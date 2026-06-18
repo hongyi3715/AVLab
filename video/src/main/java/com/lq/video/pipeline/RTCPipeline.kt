@@ -17,6 +17,7 @@ import java.nio.ByteBuffer
 class RTCPipeline : VideoBaseEncoderPipeline(){
 
     fun startSend(scope: CoroutineScope) = scope.launch(Dispatchers.IO) {
+        resetSendState()
         try {
             eventFlow.collect {
                 when (it) {
@@ -39,6 +40,13 @@ class RTCPipeline : VideoBaseEncoderPipeline(){
     private var videoFrameId = 0
     private var videoSeq = 0
     private var lastCodecConfig: ByteArray? = null
+
+    private fun resetSendState() {
+        videoFrameId = 0
+        videoSeq = 0
+        lastCodecConfig = null
+        VideoUdpSocket.resetTimestampBase()
+    }
 
     private fun nextVideoSeq(): Int = ++videoSeq
     private fun nextFrameId(): Int = ++videoFrameId

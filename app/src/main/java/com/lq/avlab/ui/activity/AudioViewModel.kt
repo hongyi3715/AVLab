@@ -36,9 +36,9 @@ class AudioViewModel @Inject constructor(private val repository: AudioRecordRepo
         }
 
         launch { //监听播放状态
-            repository.playState.collect {
+/*            repository.playState.collect {
                 println("播放状态:$it")
-            }
+            }*/
         }
         launch { //监听编码音频
 //            repository.initEncoder(viewModelScope)

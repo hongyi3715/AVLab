@@ -11,7 +11,7 @@ class AudioRecordRepository {
     val recordState = audioRecordPipeline.recordState
 
     private val audioPlayPipeline = AudioPlayPipeline()
-    val playState = audioPlayPipeline.playState
+//    val playState = audioPlayPipeline.playState
 
     //录音音频直接取编码aac
      fun initRecordFlow(scope: CoroutineScope) =  audioRecordPipeline.initRecordFlow(scope)
@@ -45,7 +45,6 @@ class AudioRecordRepository {
     }
 
     suspend fun closeTrack(){
-        audioPlayPipeline.reset()
     }
 
 }

@@ -19,7 +19,7 @@ class AudioPlayPipeline {
 
      val audioTrackManager = AudioTrackManager()
 
-    val playState = audioTrackManager.stateFlow
+//    val playState = audioTrackManager.stateFlow
 
     private val decoder: AacDecoder = AacDecoder()
 
@@ -27,13 +27,11 @@ class AudioPlayPipeline {
 
     private val bufferChannel = Channel<AudioPacket>(capacity = 16,onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
-     fun setBytesData(byteArray: ByteArray) = audioTrackManager.setBytesData(byteArray)
+     fun setBytesData(byteArray: ByteArray) = audioTrackManager.push(byteArray)
 
      fun play() = audioTrackManager.play()
 
      fun stop() = audioTrackManager.stop()
-
-     fun reset() = audioTrackManager.reset()
 
 
     private val audioBridge = AudioJniBridge()

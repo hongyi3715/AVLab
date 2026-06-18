@@ -22,6 +22,7 @@ class PlayController(context: Context) {
             override fun onSurfaceAvailable(surface: Surface, width: Int, height: Int) {
                 println("play surface=$surface width=$width height=$height")
                 lifecycleOwner.lifecycleScope.launch{
+                    glRender.initSyncClock(clock)
                     val decodeSurface = glRender.start(surface, Size(width, height))
                     pipeline.startDecode(surface= decodeSurface,width,height)
                     pipeline.initBufferListener(lifecycleOwner.lifecycleScope,clock)

@@ -43,6 +43,11 @@ object VideoUdpSocket {
     }
 
     private var baseTime = 0L
+
+    fun resetTimestampBase() {
+        baseTime = 0L
+    }
+
     private fun createTimeZoom(packetHeader: VideoPacketHeader): Long{
         val copiedBaseTime = baseTime
         val timeStampUs = packetHeader.timestampUs
