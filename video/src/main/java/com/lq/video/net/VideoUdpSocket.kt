@@ -23,7 +23,7 @@ object VideoUdpSocket {
 
     fun sendVideoPacket(packet: VideoPacket){
         val buffer = ByteBuffer.allocate(
-            4 + 4 + 4 + 4 + 8 + 4 + packet.payload.size
+            HEADER_SIZE + packet.payloadSize
         )
         buffer.putInt(packet.header.seq)
         buffer.putInt(packet.header.frameId)
@@ -31,7 +31,7 @@ object VideoUdpSocket {
         buffer.putInt(packet.header.fragCount)
         buffer.putLong(createTimeZoom(packet.header))
         buffer.putInt(packet.header.flags)
-        buffer.put(packet.payload)
+        buffer.put(packet.payload, packet.payloadOffset, packet.payloadSize)
         val packetBytes = buffer.array()
         try {
             val address = InetAddress.getByName(host)
@@ -47,6 +47,8 @@ object VideoUdpSocket {
     fun resetTimestampBase() {
         baseTime = 0L
     }
+
+    private const val HEADER_SIZE = 28
 
     private fun createTimeZoom(packetHeader: VideoPacketHeader): Long{
         val copiedBaseTime = baseTime

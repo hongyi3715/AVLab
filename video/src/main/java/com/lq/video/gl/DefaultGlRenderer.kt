@@ -178,7 +178,6 @@ class DefaultGlRenderer : GLRenderer {
             shaderConfig.drawShader(textureHandler!!, shaderConfig.identityMatrix)
         }
 
-        println("当前视频时间:${st.timestamp}")
         eglSurfaceManager.presentationTime(st.timestamp)
         eglSurfaceManager.swapEncoder()
     }

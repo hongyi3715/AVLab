@@ -8,7 +8,6 @@ import com.lq.video.net.VideoUdpSocket
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.nio.ByteBuffer
 
 
 /*
@@ -22,7 +21,6 @@ class RTCPipeline : VideoBaseEncoderPipeline(){
             eventFlow.collect {
                 when (it) {
                     is EncoderEvent.VideoFrame -> {
-                        println("当前视频帧:${it.frame}")
                         handleVideoFrame(it.frame)
                     }
 
@@ -56,14 +54,8 @@ class RTCPipeline : VideoBaseEncoderPipeline(){
             return
         }
 
-        val payload = if (frame.isKeyFrame) {
-            lastCodecConfig?.let { config ->
-                config + frame.data
-            } ?: frame.data
-        } else {
-            frame.data
-        }
-        sendAsPackets(payload, frame.flags, frame.ptsUs)
+        val prefix = if (frame.isKeyFrame) lastCodecConfig else null
+        sendAsPackets(frame.data, frame.flags, frame.ptsUs, prefix)
     }
 
     private  val MAX_PACKET_SIZE = 1200
@@ -71,29 +63,62 @@ class RTCPipeline : VideoBaseEncoderPipeline(){
     private fun sendAsPackets(
         byteArray: ByteArray,
         flags: Int,
-        ptsUs: Long = 0L
+        ptsUs: Long = 0L,
+        prefix: ByteArray? = null
     ) {
         val frameId = nextFrameId()
-        val packetCount = (byteArray.size + MAX_PACKET_SIZE - 1) / MAX_PACKET_SIZE
+        val prefixPacketCount = prefix?.let { packetCount(it.size) } ?: 0
+        val payloadPacketCount = packetCount(byteArray.size)
+        val packetCount = prefixPacketCount + payloadPacketCount
 
-        for (packetIndex in 0 until packetCount) {
-            val start = packetIndex * MAX_PACKET_SIZE
-            val end = minOf(start + MAX_PACKET_SIZE, byteArray.size)
-            val chunk = byteArray.copyOfRange(start, end)
+        prefix?.let {
+            for (packetIndex in 0 until prefixPacketCount) {
+                sendVideoSlice(it, packetIndex, packetIndex, packetCount, frameId, flags, ptsUs)
+            }
+        }
 
-            sendVideoUnit(
-                data = chunk,
-                ptsUs = ptsUs,
+        for (packetIndex in 0 until payloadPacketCount) {
+            sendVideoSlice(
+                data = byteArray,
+                sourcePacketIndex = packetIndex,
+                packetIndex = prefixPacketCount + packetIndex,
+                packetCount = packetCount,
                 frameId = frameId,
                 flags = flags,
-                packetIndex = packetIndex,
-                packetCount = packetCount
+                ptsUs = ptsUs
             )
         }
     }
 
+    private fun sendVideoSlice(
+        data: ByteArray,
+        sourcePacketIndex: Int,
+        packetIndex: Int,
+        packetCount: Int,
+        frameId: Int,
+        flags: Int,
+        ptsUs: Long
+    ) {
+        val start = sourcePacketIndex * MAX_PACKET_SIZE
+        val end = minOf(start + MAX_PACKET_SIZE, data.size)
+        sendVideoUnit(
+            data = data,
+            offset = start,
+            size = end - start,
+            ptsUs = ptsUs,
+            frameId = frameId,
+            flags = flags,
+            packetIndex = packetIndex,
+            packetCount = packetCount
+        )
+    }
+
+    private fun packetCount(size: Int): Int = (size + MAX_PACKET_SIZE - 1) / MAX_PACKET_SIZE
+
     private fun sendVideoUnit(
         data: ByteArray,
+        offset: Int,
+        size: Int,
         ptsUs: Long,
         frameId: Int,
         flags: Int,
@@ -101,7 +126,12 @@ class RTCPipeline : VideoBaseEncoderPipeline(){
         packetCount: Int
     ) {
         val seq = nextVideoSeq()
-        val videoPacket = VideoPacket(VideoPacketHeader(seq, ptsUs, frameId, packetIndex, packetCount, flags), payload = data)
+        val videoPacket = VideoPacket(
+            VideoPacketHeader(seq, ptsUs, frameId, packetIndex, packetCount, flags),
+            payload = data,
+            payloadOffset = offset,
+            payloadSize = size
+        )
         VideoUdpSocket.sendVideoPacket(videoPacket)
     }
 

@@ -104,7 +104,6 @@ class Camera264Encoder {
                 ptsUs = bufferInfo.presentationTimeUs,
                 flags = bufferInfo.flags
             )
-            println("当前视频编码:$frame")
             _eventFlow.tryEmit(EncoderEvent.VideoFrame(frame))
             currentCodec.releaseOutputBuffer(outputIndex, false)
         } catch (e: Exception) {

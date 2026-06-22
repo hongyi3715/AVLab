@@ -13,6 +13,7 @@
             <option value="$PROJECT_DIR$/audio" />
             <option value="$PROJECT_DIR$/common" />
             <option value="$PROJECT_DIR$/video" />
+            <option value="$PROJECT_DIR$/webrtc" />
           </set>
         </option>
       </GradleProjectSettings>
