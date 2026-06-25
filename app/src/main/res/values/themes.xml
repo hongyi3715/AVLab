@@ -2,4 +2,5 @@
 <resources>
 
     <style name="Theme.AVLab" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.AppCompat.AVLab" parent="Theme.AppCompat.Light.NoActionBar" />"/>
 </resources>

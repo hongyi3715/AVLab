@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.hilt) apply false
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
+    alias(libs.plugins.jetbrains.kotlin.jvm) apply false
 }
 ktlint {
     verbose.set(true)

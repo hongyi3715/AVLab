@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "com.lq.avlab"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.lq.avlab"
@@ -46,6 +46,7 @@ dependencies {
     implementation(project(":audio"))
     implementation(project(":video"))
     implementation(project(":common"))
+    implementation(project(":webrtc"))
 
     implementation(libs.hrouter.core)
     ksp(libs.hrouter.compiler)
@@ -54,6 +55,8 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
     ksp(libs.hilt.compiler)
 
+    implementation(libs.androidx.compose.material.icons.core)
+    implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

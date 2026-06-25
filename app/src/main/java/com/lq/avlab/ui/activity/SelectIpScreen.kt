@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
 
 
 @Composable
@@ -139,9 +140,9 @@ fun SelectIpScreen(
                                     add(fullHost)
                                 }
 
-                            prefs.edit()
-                                .putStringSet("saved_ips", nextSaved)
-                                .apply()
+                            prefs.edit {
+                                putStringSet("saved_ips", nextSaved)
+                            }
 
                             savedIps = nextSaved.toList()
                             onIpSelected(fullHost)
